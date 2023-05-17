@@ -58,6 +58,10 @@ impl<'src> VM<'src> {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                 },
+                OpCode::Negate => {
+                    let val = self.stack.pop().unwrap();
+                    self.stack.push(-val);
+                }
                 OpCode::Invalid => unreachable!("Reached invalid opcode at {}", self.ip),
             }
         }

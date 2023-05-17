@@ -7,6 +7,7 @@ use crate::{value::Value, ui::Span};
 pub enum OpCode {
     Return, // 0 follow bytes
     Constant, // 1 follow byte for a constant index
+    Negate, // 0 follow bytes
     #[num_enum(default)]
     Invalid,
 }
@@ -68,6 +69,7 @@ impl Chunk {
         match instruction {
             OpCode::Return => Chunk::simple_instruction("RETURN", &mut offset),
             OpCode::Constant => self.constant_instruction("CONSTANT", &mut offset),
+            OpCode::Negate => Chunk::simple_instruction("NEGATE", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;
