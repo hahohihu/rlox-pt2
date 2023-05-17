@@ -100,8 +100,8 @@ impl<'src> Iterator for Lexer<'src> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(tok, span)| {
-            tok.map(|t| Spanned::new(t, span)) // rustfmt guard
-                .map_err(|_| span.clone())
+            tok.map(|t| Spanned::new(t, span.clone())) // rustfmt guard
+                .map_err(|_| span)
         })
     }
 }
