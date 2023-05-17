@@ -1,6 +1,6 @@
 use num_enum::FromPrimitive;
 
-use crate::value::Value;
+use crate::{value::Value, ui::Span};
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive)]
 #[repr(u8)]
@@ -15,6 +15,7 @@ pub enum OpCode {
 pub struct Chunk {
     // INVARIANT: An OpCode must be followed by however many bytes are specified
     instructions: Vec<u8>,
+    source: Vec<Span>,
     constants: Vec<Value>,
 }
 
@@ -28,17 +29,18 @@ impl Chunk {
         self.constants.len() - 1
     }
     
-    pub fn disassemble(&self, name: &str) {
+    pub fn disassemble(&self, name: &str, source: &str) {
         println!("==== {name} ====");
         let mut i = 0;
         while i < self.instructions.len() {
-            self.disassemble_instruction(&mut i);
+            self.disassemble_instruction(&mut i, source);
         }
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
-    pub unsafe fn write_byte(&mut self, byte: u8) {
-        self.instructions.push(byte)
+    pub unsafe fn write_byte(&mut self, byte: u8, origin: Span) {
+        self.instructions.push(byte);
+        self.source.push(origin);
     }
 
     fn simple_instruction(name: &str, offset: &mut usize) {
@@ -53,8 +55,13 @@ impl Chunk {
         *offset += 2;
     }
 
-    fn disassemble_instruction(&self, offset: &mut usize) {
+    fn disassemble_instruction(&self, offset: &mut usize, source: &str) {
         print!("{:0>4} ", *offset);
+        if *offset > 0 && self.source[*offset] == self.source[*offset - 1] {
+            print!("{:<16}", "|");
+        } else {
+            print!("{:<16}", &source[self.source[*offset]]);
+        }
 
         let chunk = self.instructions[*offset];
         let instruction: OpCode = chunk.into();
