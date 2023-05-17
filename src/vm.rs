@@ -33,6 +33,12 @@ impl<'src> VM<'src> {
         self.chunk.constants[i]
     }
 
+    fn binary_op(&mut self, op: impl Fn(Value, Value) -> Value) {
+        let b = self.stack.pop().unwrap();
+        let a = self.stack.pop().unwrap();
+        self.stack.push(op(a, b));
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return InterpretResult::Ok;
@@ -61,7 +67,11 @@ impl<'src> VM<'src> {
                 OpCode::Negate => {
                     let val = self.stack.pop().unwrap();
                     self.stack.push(-val);
-                }
+                },
+                OpCode::Add => self.binary_op(|a, b| a + b),
+                OpCode::Sub => self.binary_op(|a, b| a - b),
+                OpCode::Mul => self.binary_op(|a, b| a * b),
+                OpCode::Div => self.binary_op(|a, b| a / b),
                 OpCode::Invalid => unreachable!("Reached invalid opcode at {}", self.ip),
             }
         }

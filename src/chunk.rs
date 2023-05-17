@@ -1,13 +1,18 @@
-use num_enum::FromPrimitive;
+use num_enum::{FromPrimitive, IntoPrimitive};
 
 use crate::{value::Value, ui::Span};
 
-#[derive(Debug, Eq, PartialEq, FromPrimitive)]
+#[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum OpCode {
-    Return, // 0 follow bytes
+    // uncommented opcodes have 0 follow bytes
+    Return,
     Constant, // 1 follow byte for a constant index
-    Negate, // 0 follow bytes
+    Negate,
+    Add,
+    Sub,
+    Mul,
+    Div,
     #[num_enum(default)]
     Invalid,
 }
@@ -39,8 +44,8 @@ impl Chunk {
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
-    pub unsafe fn write_byte(&mut self, byte: u8, origin: Span) {
-        self.instructions.push(byte);
+    pub unsafe fn write_byte(&mut self, byte: impl Into<u8>, origin: Span) {
+        self.instructions.push(byte.into());
         self.spans.push(origin);
     }
 
@@ -70,6 +75,10 @@ impl Chunk {
             OpCode::Return => Chunk::simple_instruction("RETURN", &mut offset),
             OpCode::Constant => self.constant_instruction("CONSTANT", &mut offset),
             OpCode::Negate => Chunk::simple_instruction("NEGATE", &mut offset),
+            OpCode::Add => Chunk::simple_instruction("ADD", &mut offset),
+            OpCode::Sub => Chunk::simple_instruction("SUBTRACT", &mut offset),
+            OpCode::Mul => Chunk::simple_instruction("MULTIPLY", &mut offset),
+            OpCode::Div => Chunk::simple_instruction("DIVIDE", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;
