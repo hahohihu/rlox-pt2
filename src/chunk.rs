@@ -14,9 +14,9 @@ pub enum OpCode {
 #[derive(Default, Debug, Clone)]
 pub struct Chunk {
     // INVARIANT: An OpCode must be followed by however many bytes are specified
-    instructions: Vec<u8>,
-    source: Vec<Span>,
-    constants: Vec<Value>,
+    pub instructions: Vec<u8>,
+    pub spans: Vec<Span>,
+    pub constants: Vec<Value>,
 }
 
 impl Chunk {
@@ -33,14 +33,14 @@ impl Chunk {
         println!("==== {name} ====");
         let mut i = 0;
         while i < self.instructions.len() {
-            self.disassemble_instruction(&mut i, source);
+            i = self.disassemble_instruction(i, source);
         }
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
     pub unsafe fn write_byte(&mut self, byte: u8, origin: Span) {
         self.instructions.push(byte);
-        self.source.push(origin);
+        self.spans.push(origin);
     }
 
     fn simple_instruction(name: &str, offset: &mut usize) {
@@ -55,23 +55,24 @@ impl Chunk {
         *offset += 2;
     }
 
-    fn disassemble_instruction(&self, offset: &mut usize, source: &str) {
-        print!("{:0>4} ", *offset);
-        if *offset > 0 && self.source[*offset] == self.source[*offset - 1] {
+    pub fn disassemble_instruction(&self, mut offset: usize, source: &str) -> usize {
+        print!("{:0>4} ", offset);
+        if offset > 0 && self.spans[offset] == self.spans[offset - 1] {
             print!("{:<16}", "|");
         } else {
-            print!("{:<16}", &source[self.source[*offset]]);
+            print!("{:<16}", &source[self.spans[offset]]);
         }
 
-        let chunk = self.instructions[*offset];
+        let chunk = self.instructions[offset];
         let instruction: OpCode = chunk.into();
         match instruction {
-            OpCode::Return => Chunk::simple_instruction("RETURN", offset),
-            OpCode::Constant => self.constant_instruction("CONSTANT", offset),
+            OpCode::Return => Chunk::simple_instruction("RETURN", &mut offset),
+            OpCode::Constant => self.constant_instruction("CONSTANT", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
-                *offset += 1;
+                offset += 1;
             },
         }
+        offset
     }
 }
