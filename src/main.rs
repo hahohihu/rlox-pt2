@@ -1,7 +1,14 @@
+use chunk::{Chunk, OpCode};
+
 mod lex;
 mod parse;
 mod ui;
+mod chunk;
 
 fn main() {
-    println!("Hello, world!");
+    let mut chunk = Chunk::new();
+    unsafe {
+        chunk.write_byte(OpCode::Return as u8);
+    }
+    chunk.disassemble("test");
 }
