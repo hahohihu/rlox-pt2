@@ -3,6 +3,7 @@ use crate::{chunk::{Chunk, OpCode}, value::Value};
 struct VM<'src> {
     chunk: Chunk,
     ip: usize,
+    stack: Vec<Value>,
     source: &'src str
 }
 
@@ -17,6 +18,7 @@ impl<'src> VM<'src> {
         Self {
             chunk,
             source,
+            stack: vec![],
             ip: 0,
         }
     }
@@ -39,14 +41,22 @@ impl<'src> VM<'src> {
             #[cfg(debug_assertions)]
             {
                 self.chunk.disassemble_instruction(self.ip, self.source);
+                println!("==== STACK ====");
+                let stack_len = self.stack.len().saturating_sub(8);
+                for value in &self.stack[stack_len..] {
+                    println!("{value}");
+                }
+                println!("===============");
             }
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {
+                    println!("returning: {}", self.stack.pop().unwrap());
                     return InterpretResult::Ok;
                 },
                 OpCode::Constant => {
-                    println!("{}", self.read_constant());
+                    let constant = self.read_constant();
+                    self.stack.push(constant);
                 },
                 OpCode::Invalid => unreachable!("Reached invalid opcode at {}", self.ip),
             }
