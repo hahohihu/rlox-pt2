@@ -100,7 +100,8 @@ impl<'src> Iterator for Lexer<'src> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(tok, span)| {
-            tok.map(|t| Spanned::new(t, span.clone())) // rustfmt guard
+            let span = span.into();
+            tok.map(|t| Spanned::new(t, span)) // rustfmt guard
                 .map_err(|_| span)
         })
     }
@@ -110,8 +111,9 @@ impl<'src> Iterator for Lexer<'src> {
 mod tests {
     use super::{Lexer, Token};
     use Token::*;
+    use crate::ui::Span;
 
-    fn lex(src: &str) -> Result<Vec<Token>, logos::Span> {
+    fn lex(src: &str) -> Result<Vec<Token>, Span> {
         Lexer::new(src)
             .map(|t| t.map(|t| t.data))
             .collect::<Result<Vec<_>, _>>()
@@ -120,7 +122,7 @@ mod tests {
     fn lex_ok(src: &str) -> Vec<Token> {
         match lex(src) {
             Ok(t) => t,
-            Err(s) => panic!("Mismatch at {:?} on {}", s.clone(), &src[s]),
+            Err(s) => panic!("Mismatch at {:?} on {}", s, &src[s]),
         }
     }
 

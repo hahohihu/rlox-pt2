@@ -42,7 +42,7 @@ impl<'src> Parser<'src> {
     }
 
     fn peek(&mut self) -> ParseRes<Spanned<Token>> {
-        let tok = self.lexer.peek().ok_or(ParseError::UnexpectedEOF)?;
-        tok.clone().map_err(ParseError::InvalidToken)
+        let tok = *self.lexer.peek().ok_or(ParseError::UnexpectedEOF)?;
+        tok.map_err(ParseError::InvalidToken)
     }
 }
