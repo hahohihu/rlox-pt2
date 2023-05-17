@@ -52,7 +52,7 @@ pub enum Token<'src> {
     })]
     String(&'src str),
     // leading digit is mandatory, possibly incongruent with book
-    #[regex("[0-9]+(.[0-9]+)", |lex| lex.slice().parse().ok())]
+    #[regex("[0-9]+(.[0-9]+)?", |lex| lex.slice().parse().ok())]
     Num(f64),
     #[regex("true|false", |lex| lex.slice() == "true")]
     Bool(bool),
