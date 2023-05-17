@@ -1,6 +1,7 @@
-use logos::{Logos};
+use crate::ui::{Span, Spanned};
+use logos::Logos;
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \n\r\f]+")]
 pub enum Token<'src> {
     #[token("(")]
@@ -83,11 +84,10 @@ pub enum Token<'src> {
     #[token("var")]
     Var,
     #[token("while")]
-    While
+    While,
 }
 
 pub struct Lexer<'src>(logos::SpannedIter<'src, Token<'src>>);
-pub type Span = logos::Span;
 
 impl<'src> Lexer<'src> {
     pub fn new(src: &'src str) -> Self {
@@ -96,28 +96,31 @@ impl<'src> Lexer<'src> {
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = Result<Token<'src>, Span>;
+    type Item = Result<Spanned<Token<'src>>, Span>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(tok, span)| {
-            tok.map_err(|_| span.clone())
+            tok.map(|t| Spanned::new(t, span)) // rustfmt guard
+                .map_err(|_| span.clone())
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Token, Lexer};
+    use super::{Lexer, Token};
     use Token::*;
 
     fn lex(src: &str) -> Result<Vec<Token>, logos::Span> {
-        Lexer::new(src).collect::<Result<Vec<_>, _>>()
+        Lexer::new(src)
+            .map(|t| t.map(|t| t.data))
+            .collect::<Result<Vec<_>, _>>()
     }
 
     fn lex_ok(src: &str) -> Vec<Token> {
         match lex(src) {
             Ok(t) => t,
-            Err(s) => panic!("Mismatch at {:?} on {}", s.clone(), &src[s])
+            Err(s) => panic!("Mismatch at {:?} on {}", s.clone(), &src[s]),
         }
     }
 
