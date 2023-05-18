@@ -66,6 +66,21 @@ pub enum ParseError {
     ExpectError { expected: &'static str, got: Span },
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Precedence {
+    None,
+    Assignment,
+    Or,
+    And,
+    Equality,
+    Comparison,
+    Term,
+    Factor,
+    Unary,
+    Call,
+    Primary
+}
+
 impl ParseError {
     pub fn print(&self, source: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
@@ -105,9 +120,7 @@ pub type ParseRes<T> = Result<T, ParseError>;
 impl<'src> Parser<'src> {
     fn new(source: &'src str) -> Self {
         let lexer = Lexer::new(source).peekable();
-        Self {
-           lexer
-        }
+        Self { lexer }
     }
 
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
@@ -127,15 +140,33 @@ impl<'src> Parser<'src> {
     }
 
     fn grouping(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        self.expression(chunk)?;
+        self.expression(chunk, Precedence::None)?;
         expect!(self, ") after expression", Token::RParen)
     }
 
-    fn expression(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+    fn unary(&mut self, chunk: &mut Chunk, op: Spanned<Token>) -> Result<(), ParseError> {
+        self.primary(chunk)?;
+        match op.data {
+            Token::Minus => unsafe { chunk.emit_byte(OpCode::Sub, op.span) },
+            _ => todo!(),
+        }
+        Ok(())
+    }
+
+    fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        let token = self.pop("primary")?;
+        match token.data {
+            // Token::Minus => self.unary(chunk, token)?,
+            _ => todo!()
+        }
+        Ok(())
+    }
+
+    fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         let tok = self.pop("expression")?;
         match tok.data {
             Token::Num(n) => chunk.emit_constant(n, tok.span),
-            _ => todo!()
+            _ => todo!(),
         }
         Ok(())
     }
@@ -144,7 +175,7 @@ impl<'src> Parser<'src> {
 pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source);
-    parser.expression(&mut chunk)?;
+    parser.expression(&mut chunk, Precedence::None)?;
     chunk.emit_return();
     Ok(chunk)
 }
