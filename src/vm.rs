@@ -1,16 +1,20 @@
-use crate::{chunk::{Chunk, OpCode}, value::Value};
+use crate::{
+    chunk::{Chunk, OpCode},
+    parse::compile,
+    value::Value,
+};
 
 struct VM<'src> {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
-    source: &'src str
+    source: &'src str,
 }
 
 pub enum InterpretResult {
-    Ok,
-    CompileError,
-    RuntimeError,
+    Ok = 0,
+    CompileError = 1,
+    RuntimeError = 2,
 }
 
 impl<'src> VM<'src> {
@@ -59,15 +63,15 @@ impl<'src> VM<'src> {
                 OpCode::Return => {
                     println!("returning: {}", self.stack.pop().unwrap());
                     return InterpretResult::Ok;
-                },
+                }
                 OpCode::Constant => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
-                },
+                }
                 OpCode::Negate => {
                     let val = self.stack.pop().unwrap();
                     self.stack.push(-val);
-                },
+                }
                 OpCode::Add => self.binary_op(|a, b| a + b),
                 OpCode::Sub => self.binary_op(|a, b| a - b),
                 OpCode::Mul => self.binary_op(|a, b| a * b),
@@ -78,7 +82,14 @@ impl<'src> VM<'src> {
     }
 }
 
-pub fn interpret(chunk: Chunk, source: &str) -> InterpretResult {
+pub fn interpret(source: &str) -> InterpretResult {
+    let mut chunk = match compile(source) {
+        Ok(chunk) => chunk,
+        Err(e) => {
+            e.print(source);
+            return InterpretResult::CompileError;
+        }
+    };
     let mut vm = VM::new(chunk, source);
     vm.run()
 }

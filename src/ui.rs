@@ -22,6 +22,21 @@ impl Index<Span> for str {
     }
 }
 
+impl ariadne::Span for Span {
+    type SourceId = ();
+    fn source(&self) -> &Self::SourceId {
+        &()
+    }
+
+    fn start(&self) -> usize {
+        self.begin as usize
+    }
+
+    fn end(&self) -> usize {
+        self.end as usize
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Spanned<T> {
     pub data: T,
