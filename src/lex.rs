@@ -3,7 +3,7 @@ use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
 #[logos(skip r"[ \n\r\f]+")]
-pub enum Token<'src> {
+pub enum Token {
     #[token("(")]
     LParen,
     #[token(")")]
@@ -45,17 +45,16 @@ pub enum Token<'src> {
     LessEq,
 
     #[regex("[a-zA-Z_][a-zA-Z_0-9]*")]
-    Ident(&'src str),
-    #[regex(r#""[^"]*""#, |lex| {
-        let string = lex.slice();
-        &string[1..string.len() - 1] // trim "
-    })]
-    String(&'src str),
+    Ident,
+    #[regex(r#""[^"]*""#)]
+    String,
     // leading digit is mandatory, possibly incongruent with book
-    #[regex("[0-9]+(.[0-9]+)?", |lex| lex.slice().parse().ok())]
-    Num(f64),
-    #[regex("true|false", |lex| lex.slice() == "true")]
-    Bool(bool),
+    #[regex("[0-9]+(.[0-9]+)?")]
+    Num,
+    #[token("true")]
+    True,
+    #[token("false")]
+    False,
 
     #[token("and")]
     And,
@@ -87,7 +86,7 @@ pub enum Token<'src> {
     While,
 }
 
-pub struct Lexer<'src>(logos::SpannedIter<'src, Token<'src>>);
+pub struct Lexer<'src>(logos::SpannedIter<'src, Token>);
 
 impl<'src> Lexer<'src> {
     pub fn new(src: &'src str) -> Self {
@@ -96,7 +95,7 @@ impl<'src> Lexer<'src> {
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = Result<Spanned<Token<'src>>, Span>;
+    type Item = Result<Spanned<Token>, Span>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|(tok, span)| {
@@ -128,7 +127,7 @@ mod tests {
 
     #[test]
     fn bools() {
-        assert_eq!(lex_ok("true false"), &[Bool(true), Bool(false)]);
+        assert_eq!(lex_ok("true false"), &[True, False]);
     }
 
     #[test]
@@ -138,6 +137,6 @@ mod tests {
 
     #[test]
     fn multiline_strings() {
-        assert_eq!(lex_ok("\"1\n2\n3\n\""), &[String("1\n2\n3\n")])
+        assert_eq!(lex_ok("\"1\n2\n3\n\""), &[String])
     }
 }

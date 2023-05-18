@@ -9,6 +9,7 @@ use crate::value::Value;
 
 struct Parser<'src> {
     lexer: Peekable<Lexer<'src>>,
+    source: &'src str
 }
 
 macro_rules! expect {
@@ -120,7 +121,7 @@ pub type ParseRes<T> = Result<T, ParseError>;
 impl<'src> Parser<'src> {
     fn new(source: &'src str) -> Self {
         let lexer = Lexer::new(source).peekable();
-        Self { lexer }
+        Self { lexer, source }
     }
 
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
@@ -165,7 +166,10 @@ impl<'src> Parser<'src> {
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         let tok = self.pop("expression")?;
         match tok.data {
-            Token::Num(n) => chunk.emit_constant(n, tok.span),
+            Token::Num => {
+                let n = self.source[tok.span].parse().unwrap();
+                chunk.emit_constant(n, tok.span)
+            },
             _ => todo!(),
         }
         Ok(())
