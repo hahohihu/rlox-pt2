@@ -1,5 +1,9 @@
 use std::iter::Peekable;
 
+use tracing::event;
+use tracing::instrument;
+use tracing::Level;
+
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::lex::Lexer;
@@ -89,7 +93,7 @@ impl From<Token> for Precedence {
             Token::Plus => Self::Term,
             Token::Slash => Self::Factor,
             Token::Star => Self::Factor,
-            _ => todo!()
+            _ => todo!(),
         }
     }
 }
@@ -136,9 +140,13 @@ impl<'src> Parser<'src> {
         Self { lexer, source }
     }
 
+    #[instrument(skip(self, expected))]
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
         match self.lexer.next() {
-            Some(Ok(t)) => Ok(t),
+            Some(Ok(t)) => {
+                tracing::trace!("popping '{}'", &self.source[t.span]);
+                Ok(t)
+            },
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
             None => Err(ParseError::EOF { expected }),
         }
@@ -152,6 +160,7 @@ impl<'src> Parser<'src> {
         })
     }
 
+    #[instrument(skip(self, chunk))]
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let token = self.pop("primary")?;
         match token.data {
@@ -172,6 +181,7 @@ impl<'src> Parser<'src> {
         Ok(())
     }
 
+    #[instrument(skip(self, chunk, min))]
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;
         loop {
@@ -186,7 +196,12 @@ impl<'src> Parser<'src> {
                 Token::Star => OpCode::Mul,
                 // Tokens that may follow a primary
                 Token::RParen => break,
-                _ => return Err(ParseError::ExpectError { expected: "operator", got: op.span })
+                _ => {
+                    return Err(ParseError::ExpectError {
+                        expected: "operator",
+                        got: op.span,
+                    })
+                }
             };
 
             let prec = Precedence::from(op.data); // todo: everything left associative

@@ -8,5 +8,6 @@ mod value;
 mod vm;
 
 fn main() {
-    interpret("(42 + 2 * (2 + 2)) / 4");
+    tracing_subscriber::fmt::init();
+    interpret("(42 + 2 * (2 + 2) + 2) / 4");
 }
