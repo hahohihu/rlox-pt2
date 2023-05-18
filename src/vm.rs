@@ -48,7 +48,7 @@ impl<'src> VM<'src> {
             return InterpretResult::Ok;
         }
         loop {
-            #[cfg(debug_assertions)]
+            #[cfg(verbose)]
             {
                 self.chunk.disassemble_instruction(self.ip, self.source);
                 println!("==== STACK ====");

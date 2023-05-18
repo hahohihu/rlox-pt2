@@ -12,20 +12,20 @@ struct Parser<'src> {
 }
 
 macro_rules! expect {
-    ($self:expr, $pat:pat => $ret:expr) => {
+    ($self:expr, $msg:expr, $pat:pat => $ret:expr) => {
         (|| {
             let tok = $self.pop(stringify!($pat))?;
             match tok.data {
                 $pat => Ok($ret),
                 _ => return Err(ParseError::ExpectError {
-                    expected: stringify!($pat),
+                    expected: $msg,
                     got: tok.span
                 }),
             }
         })()
     };
-    ($self:expr, $pat:pat) => {
-        expect!($self, $pat => ())
+    ($self:expr, $msg:expr, $pat:pat) => {
+        expect!($self, $msg, $pat => ())
     }
 }
 
@@ -124,6 +124,11 @@ impl<'src> Parser<'src> {
             Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
             None => Err(ParseError::UnexpectedEOF { expected }),
         }
+    }
+
+    fn grouping(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        self.expression(chunk)?;
+        expect!(self, ") after expression", Token::RParen)
     }
 
     fn expression(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
