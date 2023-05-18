@@ -184,6 +184,8 @@ impl<'src> Parser<'src> {
                 Token::Plus => OpCode::Add,
                 Token::Slash => OpCode::Div,
                 Token::Star => OpCode::Mul,
+                // Tokens that may follow a primary
+                Token::RParen => break,
                 _ => return Err(ParseError::ExpectError { expected: "operator", got: op.span })
             };
 
