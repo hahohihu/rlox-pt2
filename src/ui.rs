@@ -1,4 +1,4 @@
-use std::{slice::SliceIndex, ops::Index};
+use std::ops::Index;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Span {
@@ -10,7 +10,7 @@ impl From<logos::Span> for Span {
     fn from(value: logos::Span) -> Self {
         Self {
             begin: value.start.try_into().unwrap(),
-            end: value.end.try_into().unwrap()
+            end: value.end.try_into().unwrap(),
         }
     }
 }
@@ -41,6 +41,12 @@ impl ariadne::Span for Span {
 pub struct Spanned<T> {
     pub data: T,
     pub span: Span,
+}
+
+impl<T> From<Spanned<T>> for Span {
+    fn from(value: Spanned<T>) -> Self {
+        value.span
+    }
 }
 
 impl<T: Copy> Copy for Spanned<T> {}

@@ -1,6 +1,6 @@
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use crate::{value::Value, ui::Span};
+use crate::{ui::Span, value::Value};
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
@@ -30,11 +30,12 @@ impl Chunk {
         Self::default()
     }
 
-    pub fn add_constant(&mut self, value: Value) -> usize {
+    pub fn add_constant(&mut self, value: Value) -> u8 {
         self.constants.push(value);
-        self.constants.len() - 1
+        let index = self.constants.len() - 1;
+        index.try_into().expect("Too many constants")
     }
-    
+
     pub fn disassemble(&self, name: &str, source: &str) {
         println!("==== {name} ====");
         let mut i = 0;
@@ -82,7 +83,7 @@ impl Chunk {
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;
-            },
+            }
         }
         offset
     }

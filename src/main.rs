@@ -1,9 +1,9 @@
 use vm::interpret;
 
+mod chunk;
 mod lex;
 mod parse;
 mod ui;
-mod chunk;
 mod value;
 mod vm;
 

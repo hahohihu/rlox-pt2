@@ -83,7 +83,7 @@ impl<'src> VM<'src> {
 }
 
 pub fn interpret(source: &str) -> InterpretResult {
-    let mut chunk = match compile(source) {
+    let chunk = match compile(source) {
         Ok(chunk) => chunk,
         Err(e) => {
             e.print(source);

@@ -110,8 +110,8 @@ impl<'src> Iterator for Lexer<'src> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, Token};
-    use Token::*;
     use crate::ui::Span;
+    use Token::*;
 
     fn lex(src: &str) -> Result<Vec<Token>, Span> {
         Lexer::new(src)
