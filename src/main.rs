@@ -8,5 +8,5 @@ mod value;
 mod vm;
 
 fn main() {
-    interpret("");
+    interpret("42");
 }

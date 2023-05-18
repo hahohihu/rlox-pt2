@@ -7,9 +7,8 @@ use crate::lex::Token;
 use crate::ui::*;
 use crate::value::Value;
 
-struct Parser<'src, 'chunk> {
+struct Parser<'src> {
     lexer: Peekable<Lexer<'src>>,
-    chunk: &'chunk mut Chunk,
 }
 
 macro_rules! expect {
@@ -32,14 +31,32 @@ macro_rules! expect {
 
 /// The same rules around emit_byte applies
 macro_rules! emit_bytes {
-    ($self:expr; $(($byte:expr, $span:expr)),+ $(,)?) => {{
+    ($chunk:expr; $(($byte:expr, $span:expr)),+ $(,)?) => {{
         let span: Span = $span.into();
-        $($self.emit_byte($byte, span);)+
+        $($chunk.emit_byte($byte, span);)+
     }};
-    ($self:expr, $span:expr; $($byte:expr),+ $(,)?) => {{
+    ($chunk:expr, $span:expr; $($byte:expr),+ $(,)?) => {{
         let span: Span = $span.into();
-        $($self.emit_byte($byte, span);)+
+        $($chunk.emit_byte($byte, span);)+
     }}
+}
+
+impl Chunk {
+    /// SAFETY: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
+    unsafe fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
+        self.write_byte(byte, span.into());
+    }
+
+    fn emit_constant(&mut self, value: Value, span: impl Into<Span>) {
+        let constant = self.add_constant(value);
+        unsafe { emit_bytes!(self, span; OpCode::Constant, constant) }
+    }
+
+    fn emit_return(&mut self) {
+        unsafe {
+            self.emit_byte(OpCode::Return, 0..0);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -85,7 +102,14 @@ impl ParseError {
 
 pub type ParseRes<T> = Result<T, ParseError>;
 
-impl<'src, 'chunk> Parser<'src, 'chunk> {
+impl<'src> Parser<'src> {
+    fn new(source: &'src str) -> Self {
+        let lexer = Lexer::new(source).peekable();
+        Self {
+           lexer
+        }
+    }
+
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
         match self.lexer.next() {
             Some(Ok(t)) => Ok(t),
@@ -102,20 +126,20 @@ impl<'src, 'chunk> Parser<'src, 'chunk> {
         }
     }
 
-    /// SAFETY: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
-    unsafe fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
-        self.chunk.write_byte(byte, span.into());
+    fn expression(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        let tok = self.pop("expression")?;
+        match tok.data {
+            Token::Num(n) => chunk.emit_constant(n, tok.span),
+            _ => todo!()
+        }
+        Ok(())
     }
-
-    fn emit_constant(&mut self, value: Value, span: impl Into<Span>) {
-        let constant = self.chunk.add_constant(value);
-        unsafe { emit_bytes!(self, span; OpCode::Constant, constant) }
-    }
-
-    fn expression(&self) {}
 }
 
-pub fn compile(_source: &str) -> Result<Chunk, ParseError> {
-    let chunk = Chunk::new();
+pub fn compile(source: &str) -> Result<Chunk, ParseError> {
+    let mut chunk = Chunk::new();
+    let mut parser = Parser::new(source);
+    parser.expression(&mut chunk)?;
+    chunk.emit_return();
     Ok(chunk)
 }
