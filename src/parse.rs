@@ -9,7 +9,7 @@ use crate::value::Value;
 
 struct Parser<'src> {
     lexer: Peekable<Lexer<'src>>,
-    source: &'src str
+    source: &'src str,
 }
 
 macro_rules! expect {
@@ -62,7 +62,7 @@ impl Chunk {
 
 #[derive(Debug)]
 pub enum ParseError {
-    UnexpectedEOF { expected: &'static str },
+    EOF { expected: &'static str },
     InvalidToken(Span),
     ExpectError { expected: &'static str, got: Span },
 }
@@ -79,7 +79,19 @@ enum Precedence {
     Factor,
     Unary,
     Call,
-    Primary
+    Primary,
+}
+
+impl From<Token> for Precedence {
+    fn from(value: Token) -> Self {
+        match value {
+            Token::Minus => Self::Term,
+            Token::Plus => Self::Term,
+            Token::Slash => Self::Factor,
+            Token::Star => Self::Factor,
+            _ => todo!()
+        }
+    }
 }
 
 impl ParseError {
@@ -94,7 +106,7 @@ impl ParseError {
                         .with_color(Color::Red)
                         .with_message("Invalid token"),
                 ),
-            Self::UnexpectedEOF { expected } => {
+            Self::EOF { expected } => {
                 let end = source.len().saturating_sub(1);
                 Report::build(ReportKind::Error, (), offset)
                     .with_message("Unexpected end of file")
@@ -128,49 +140,65 @@ impl<'src> Parser<'src> {
         match self.lexer.next() {
             Some(Ok(t)) => Ok(t),
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
-            None => Err(ParseError::UnexpectedEOF { expected }),
+            None => Err(ParseError::EOF { expected }),
         }
     }
 
-    fn peek(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
-        match self.lexer.peek() {
-            Some(Ok(t)) => Ok(*t),
-            Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
-            None => Err(ParseError::UnexpectedEOF { expected }),
-        }
-    }
-
-    fn grouping(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        self.expression(chunk, Precedence::None)?;
-        expect!(self, ") after expression", Token::RParen)
-    }
-
-    fn unary(&mut self, chunk: &mut Chunk, op: Spanned<Token>) -> Result<(), ParseError> {
-        self.primary(chunk)?;
-        match op.data {
-            Token::Minus => unsafe { chunk.emit_byte(OpCode::Sub, op.span) },
-            _ => todo!(),
-        }
-        Ok(())
+    fn peek(&mut self) -> Option<ParseRes<Spanned<Token>>> {
+        let tok = self.lexer.peek()?;
+        Some(match tok {
+            Ok(t) => Ok(*t),
+            Err(t) => Err(ParseError::InvalidToken(*t)),
+        })
     }
 
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let token = self.pop("primary")?;
         match token.data {
-            // Token::Minus => self.unary(chunk, token)?,
-            _ => todo!()
+            Token::Minus => {
+                self.primary(chunk)?;
+                unsafe { chunk.emit_byte(OpCode::Sub, token.span) }
+            }
+            Token::LParen => {
+                self.expression(chunk, Precedence::None)?;
+                expect!(self, ") after expression", Token::RParen)?;
+            }
+            Token::Num => {
+                let n = self.source[token.span].parse().unwrap();
+                chunk.emit_constant(n, token.span)
+            }
+            _ => todo!(),
         }
         Ok(())
     }
 
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
-        let tok = self.pop("expression")?;
-        match tok.data {
-            Token::Num => {
-                let n = self.source[tok.span].parse().unwrap();
-                chunk.emit_constant(n, tok.span)
-            },
-            _ => todo!(),
+        self.primary(chunk)?;
+        loop {
+            let Some(op) = self.peek() else {
+                break;
+            };
+            let op = op?;
+            let opcode = match op.data {
+                Token::Minus => OpCode::Sub,
+                Token::Plus => OpCode::Add,
+                Token::Slash => OpCode::Div,
+                Token::Star => OpCode::Mul,
+                _ => return Err(ParseError::ExpectError { expected: "operator", got: op.span })
+            };
+
+            let prec = Precedence::from(op.data); // todo: everything left associative
+            if prec < min {
+                break;
+            }
+
+            self.pop("unreachable").unwrap();
+            self.expression(chunk, prec)?;
+
+            unsafe {
+                // PRECONDITION: This is a bit delicate. There must be 2 numbers on the stack when this is run, and parsing ought to guarantee this.
+                chunk.emit_byte(opcode, op.span);
+            }
         }
         Ok(())
     }

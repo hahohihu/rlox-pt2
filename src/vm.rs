@@ -48,7 +48,7 @@ impl<'src> VM<'src> {
             return InterpretResult::Ok;
         }
         loop {
-            #[cfg(verbose)]
+            #[cfg(feature = "verbose")]
             {
                 self.chunk.disassemble_instruction(self.ip, self.source);
                 println!("==== STACK ====");
@@ -56,7 +56,7 @@ impl<'src> VM<'src> {
                 for value in &self.stack[stack_len..] {
                     println!("{value}");
                 }
-                println!("===============");
+                println!("==============================");
             }
             let instruction: OpCode = self.next_byte().into();
             match instruction {

@@ -65,9 +65,9 @@ impl Chunk {
     pub fn disassemble_instruction(&self, mut offset: usize, source: &str) -> usize {
         print!("{:0>4} ", offset);
         if offset > 0 && self.spans[offset] == self.spans[offset - 1] {
-            print!("{:<16}", "|");
+            print!("{:<8}", "|");
         } else {
-            print!("{:<16}", &source[self.spans[offset]]);
+            print!("{:<8}", &source[self.spans[offset]]);
         }
 
         let chunk = self.instructions[offset];
