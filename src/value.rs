@@ -4,6 +4,7 @@ use std::fmt::Display;
 pub enum Value {
     Num(f64),
     Bool(bool),
+    Nil,
 }
 
 impl Display for Value {
@@ -11,6 +12,7 @@ impl Display for Value {
         match self {
             Self::Num(n) => n.fmt(f),
             Self::Bool(b) => b.fmt(f),
+            Self::Nil => write!(f, "nil"),
         }
     }
 }
@@ -18,8 +20,9 @@ impl Display for Value {
 impl Value {
     pub fn typename(&self) -> &'static str {
         match self {
-            Value::Bool(_) => "boolean",
-            Value::Num(_) => "number",
+            Self::Bool(_) => "boolean",
+            Self::Num(_) => "number",
+            Self::Nil => "nil",
         }
     }
 }

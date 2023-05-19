@@ -48,18 +48,20 @@ macro_rules! emit_bytes {
 }
 
 impl Chunk {
-    /// SAFETY: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
+    /// PRECONDITION: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
     unsafe fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
         self.write_byte(byte, span.into());
     }
 
     fn emit_constant(&mut self, value: Value, span: impl Into<Span>) {
         let constant = self.add_constant(value);
+        // SAFETY: constant
         unsafe { emit_bytes!(self, span; OpCode::Constant, constant) }
     }
 
     fn emit_return(&mut self) {
         unsafe {
+            // SAFETY: constant
             self.emit_byte(OpCode::Return, 0..0);
         }
     }
@@ -146,7 +148,7 @@ impl<'src> Parser<'src> {
             Some(Ok(t)) => {
                 tracing::trace!("popping '{}'", &self.source[t.span]);
                 Ok(t)
-            },
+            }
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
             None => Err(ParseError::EOF { expected }),
         }
@@ -160,12 +162,14 @@ impl<'src> Parser<'src> {
         })
     }
 
+    /// ensures: Ok(_) ==> A value shall be put on the stack
     #[instrument(skip(self, chunk))]
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let token = self.pop("primary")?;
         match token.data {
             Token::Minus => {
                 self.primary(chunk)?;
+                // SAFETY: a value must be on the stack for negate to work, which primary guarantees
                 unsafe { chunk.emit_byte(OpCode::Negate, token.span) }
             }
             Token::LParen => {
@@ -176,17 +180,25 @@ impl<'src> Parser<'src> {
                 let n = self.source[token.span].parse::<f64>().unwrap();
                 chunk.emit_constant(Value::Num(n), token.span)
             }
-            Token::True => {
-                chunk.emit_constant(Value::Bool(true), token.span);
-            }
-            Token::False => {
-                chunk.emit_constant(Value::Bool(false), token.span);
-            }
+            Token::True => unsafe {
+                // SAFETY: constant
+                chunk.emit_byte(OpCode::True, token.span);
+            },
+
+            Token::False => unsafe {
+                // SAFETY: constant
+                chunk.emit_byte(OpCode::False, token.span);
+            },
+            Token::Nil => unsafe {
+                // SAFETY: constant
+                chunk.emit_byte(OpCode::Nil, token.span);
+            },
             _ => todo!(),
         }
         Ok(())
     }
 
+    /// ensures: Ok(_) ==> At least one additional value on the stack
     #[instrument(skip(self, chunk, min))]
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;
@@ -219,7 +231,7 @@ impl<'src> Parser<'src> {
             self.expression(chunk, prec)?;
 
             unsafe {
-                // PRECONDITION: This is a bit delicate. There must be 2 numbers on the stack when this is run, and parsing ought to guarantee this.
+                // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
                 chunk.emit_byte(opcode, op.span);
             }
         }

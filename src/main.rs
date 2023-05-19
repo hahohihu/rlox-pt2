@@ -9,5 +9,5 @@ mod vm;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    interpret("-true");
+    interpret("-nil");
 }

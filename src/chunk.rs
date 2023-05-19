@@ -5,10 +5,15 @@ use crate::{ui::Span, value::Value};
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]
 pub enum OpCode {
-    // uncommented opcodes have 0 follow bytes
+    // 0 follow bytes ====
     Return,
-    Constant, // 1 follow byte for a constant index
-    Negate,
+    Nil,
+    True,
+    False,
+    // 1 follow bytes ====
+    Constant, // 1: a constant index
+    // No follow bytes but data-dependent
+    Negate, 
     Add,
     Sub,
     Mul,
@@ -80,6 +85,9 @@ impl Chunk {
             OpCode::Sub => Chunk::simple_instruction("SUBTRACT", &mut offset),
             OpCode::Mul => Chunk::simple_instruction("MULTIPLY", &mut offset),
             OpCode::Div => Chunk::simple_instruction("DIVIDE", &mut offset),
+            OpCode::Nil => Chunk::simple_instruction("NIL", &mut offset),
+            OpCode::True => Chunk::simple_instruction("TRUE", &mut offset),
+            OpCode::False => Chunk::simple_instruction("FALSE", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;

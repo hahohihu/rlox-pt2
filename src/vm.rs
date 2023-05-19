@@ -41,18 +41,19 @@ impl<'src> VM<'src> {
     /// This gets the span over the range relative to the current IP
     /// Note that this is a bit wonky since instructions aren't in the same order as code
     /// (and are variable-length)
-    fn get_span(&self, range: Range<isize>) -> Option<Span> {
+    fn get_span(&self, range: Range<isize>) -> Span {
         let start = self.ip as isize + range.start;
         let end = self.ip as isize + range.end;
         debug_assert!(start < end);
         if start < 0 {
-            return self.chunk.spans.get(0).copied();
+            // The bytecode will always have at least a return
+            return self.chunk.spans[0];
         }
         let range = Range {
-            start: start as usize,
-            end: end as usize,
+            start: start.max(0) as usize,
+            end: (end as usize).min(self.chunk.spans.len()),
         };
-        self.chunk.spans.get(range).map(Span::unite_many)
+        Span::unite_many(&self.chunk.spans[range])
     }
 
     fn read_constant(&mut self) -> Value {
@@ -68,7 +69,7 @@ impl<'src> VM<'src> {
                 self.stack.push(Value::Num(op(a, b)))
             }
             (a, b) => {
-                let span = self.get_span(-2..1).unwrap();
+                let span = self.get_span(-2..1);
                 self.runtime_error(span, format!("Operator '{name}' takes two numbers. Got a {} ({a}) and a {} ({b}).", a.typename(), b.typename()));
                 return Err(InterpretError::RuntimeError);
             }
@@ -112,16 +113,25 @@ impl<'src> VM<'src> {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                 }
+                OpCode::Nil => {
+                    self.stack.push(Value::Nil);
+                }
+                OpCode::True => {
+                    self.stack.push(Value::Bool(true))
+                }
+                OpCode::False => {
+                    self.stack.push(Value::Bool(true))
+                }
                 OpCode::Negate => {
                     let val = self.stack.pop().unwrap();
                     match val {
-                        Value::Bool(b) => {
-                            let span = self.get_span(-3..0).unwrap();
-                            self.runtime_error(span, format!("Tried to negate a boolean ({b})"));
-                            return Err(InterpretError::RuntimeError);
-                        }
                         Value::Num(n) => {
                             self.stack.push(Value::Num(-n));
+                        }
+                        val => {
+                            let span = self.get_span(-3..0);
+                            self.runtime_error(span, format!("Tried to negate a {} ({val})", val.typename()));
+                            return Err(InterpretError::RuntimeError);
                         }
                     }
                 }
