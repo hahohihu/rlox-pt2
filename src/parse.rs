@@ -37,10 +37,6 @@ macro_rules! expect {
 
 /// The same rules around emit_byte applies
 macro_rules! emit_bytes {
-    ($chunk:expr; $(($byte:expr, $span:expr)),+ $(,)?) => {{
-        let span: Span = $span.into();
-        $($chunk.emit_byte($byte, span);)+
-    }};
     ($chunk:expr, $span:expr; $($byte:expr),+ $(,)?) => {{
         let span: Span = $span.into();
         $($chunk.emit_byte($byte, span);)+
@@ -77,6 +73,7 @@ pub enum ParseError {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
+    Start,
     Assignment,
     Or,
     And,
@@ -96,7 +93,12 @@ impl From<Token> for Precedence {
             Token::Plus => Self::Term,
             Token::Slash => Self::Factor,
             Token::Star => Self::Factor,
-            _ => todo!(),
+            Token::EqEq => Self::Equality,
+            Token::Greater => Self::Comparison,
+            Token::GreaterEq => Self::Comparison,
+            Token::Less => Self::Comparison,
+            Token::LessEq => Self::Comparison,
+            _ => Self::None,
         }
     }
 }
@@ -178,7 +180,7 @@ impl<'src> Parser<'src> {
                 unsafe { chunk.emit_byte(OpCode::Not, token.span) }
             }
             Token::LParen => {
-                self.expression(chunk, Precedence::None)?;
+                self.expression(chunk, Precedence::Start)?;
                 expect!(self, ") after expression", Token::RParen)?;
             }
             Token::Num => {
@@ -212,20 +214,6 @@ impl<'src> Parser<'src> {
                 break;
             };
             let op = op?;
-            let opcode = match op.data {
-                Token::Minus => OpCode::Sub,
-                Token::Plus => OpCode::Add,
-                Token::Slash => OpCode::Div,
-                Token::Star => OpCode::Mul,
-                // Tokens that may follow a primary
-                Token::RParen => break,
-                _ => {
-                    return Err(ParseError::ExpectError {
-                        expected: "operator",
-                        got: op.span,
-                    })
-                }
-            };
 
             let prec = Precedence::from(op.data); // todo: everything left associative
             if prec < min {
@@ -235,9 +223,26 @@ impl<'src> Parser<'src> {
             self.pop("unreachable").unwrap();
             self.expression(chunk, prec)?;
 
+            // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
             unsafe {
-                // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
-                chunk.emit_byte(opcode, op.span);
+                macro_rules! emit {
+                    ($($op:expr),+) => {
+                        emit_bytes!(chunk, op.span; $($op,)+)
+                    };
+                }
+                match op.data {
+                    Token::Minus => emit!(OpCode::Sub),
+                    Token::Plus => emit!(OpCode::Add),
+                    Token::Slash => emit!(OpCode::Div),
+                    Token::Star => emit!(OpCode::Mul),
+                    Token::EqEq => emit!(OpCode::Equal),
+                    Token::BangEq => emit!(OpCode::Equal, OpCode::Not),
+                    Token::Greater => emit!(OpCode::Greater),
+                    Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
+                    Token::Less => emit!(OpCode::Less),
+                    Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
+                    _ => unreachable!("Precedence::from must handle this"),
+                }
             }
         }
         Ok(())
@@ -247,7 +252,14 @@ impl<'src> Parser<'src> {
 pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source);
-    parser.expression(&mut chunk, Precedence::None)?;
+    parser.expression(&mut chunk, Precedence::Start)?;
+    if let Some(t) = parser.peek() {
+        let t = t?;
+        return Err(ParseError::ExpectError {
+            expected: "EOF",
+            got: t.span,
+        });
+    }
     chunk.emit_return();
     Ok(chunk)
 }

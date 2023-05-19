@@ -62,12 +62,12 @@ impl<'src> VM<'src> {
         self.chunk.constants[i]
     }
 
-    fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> f64) -> InterpretResult {
+    fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
         match (a, b) {
             (Value::Num(a), Value::Num(b)) => {
-                self.stack.push(Value::Num(op(a, b)))
+                self.stack.push(op(a, b))
             }
             (a, b) => {
                 let span = self.get_span(-2..1);
@@ -140,10 +140,17 @@ impl<'src> VM<'src> {
                     let value = Value::Bool(self.stack.pop().unwrap().falsey());
                     self.stack.push(value);
                 }
-                OpCode::Add => self.binary_num_op("+", |a, b| a + b)?,
-                OpCode::Sub => self.binary_num_op("-", |a, b| a - b)?,
-                OpCode::Mul => self.binary_num_op("*", |a, b| a * b)?,
-                OpCode::Div => self.binary_num_op("/", |a, b| a / b)?,
+                OpCode::Add => self.binary_num_op("+", |a, b| Value::Num(a + b))?,
+                OpCode::Sub => self.binary_num_op("-", |a, b| Value::Num(a - b))?,
+                OpCode::Mul => self.binary_num_op("*", |a, b| Value::Num(a * b))?,
+                OpCode::Div => self.binary_num_op("/", |a, b| Value::Num(a / b))?,
+                OpCode::Less => self.binary_num_op("<", |a, b| Value::Bool(a < b))?,
+                OpCode::Greater => self.binary_num_op(">", |a, b| Value::Bool(a > b))?,
+                OpCode::Equal => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(Value::Bool(a == b));
+                }
                 OpCode::Invalid => unreachable!("Reached invalid opcode at {}", self.ip),
             }
         }

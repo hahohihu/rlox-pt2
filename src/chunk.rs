@@ -14,13 +14,16 @@ pub enum OpCode {
     Constant, // 1: a constant index
     // No follow bytes but data-dependent
     // Unary
-    Negate, 
+    Negate,
     Not,
     // Binary
     Add,
     Sub,
     Mul,
     Div,
+    Equal,
+    Greater,
+    Less,
     #[num_enum(default)]
     Invalid,
 }
@@ -92,6 +95,9 @@ impl Chunk {
             OpCode::Not => Chunk::simple_instruction("NOT", &mut offset),
             OpCode::True => Chunk::simple_instruction("TRUE", &mut offset),
             OpCode::False => Chunk::simple_instruction("FALSE", &mut offset),
+            OpCode::Equal => Chunk::simple_instruction("EQUAL", &mut offset),
+            OpCode::Greater => Chunk::simple_instruction("GREATER", &mut offset),
+            OpCode::Less => Chunk::simple_instruction("LESS", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;

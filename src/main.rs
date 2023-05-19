@@ -9,5 +9,5 @@ mod vm;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();
-    interpret("!!!!nil")
+    interpret("!(5 - 4 > 3 * 2 == !nil)")
 }
