@@ -1,4 +1,4 @@
-use vm::interpret;
+use vm::{interpret, InterpretError};
 
 mod chunk;
 mod lex;
@@ -7,7 +7,7 @@ mod ui;
 mod value;
 mod vm;
 
-fn main() {
+fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();
-    interpret("-nil");
+    interpret("!!!!nil")
 }

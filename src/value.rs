@@ -25,4 +25,8 @@ impl Value {
             Self::Nil => "nil",
         }
     }
+
+    pub fn falsey(&self) -> bool {
+        matches!(self, Self::Bool(false) | Self::Nil)
+    }
 }

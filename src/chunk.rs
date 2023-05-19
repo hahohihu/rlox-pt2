@@ -13,7 +13,10 @@ pub enum OpCode {
     // 1 follow bytes ====
     Constant, // 1: a constant index
     // No follow bytes but data-dependent
+    // Unary
     Negate, 
+    Not,
+    // Binary
     Add,
     Sub,
     Mul,
@@ -86,6 +89,7 @@ impl Chunk {
             OpCode::Mul => Chunk::simple_instruction("MULTIPLY", &mut offset),
             OpCode::Div => Chunk::simple_instruction("DIVIDE", &mut offset),
             OpCode::Nil => Chunk::simple_instruction("NIL", &mut offset),
+            OpCode::Not => Chunk::simple_instruction("NOT", &mut offset),
             OpCode::True => Chunk::simple_instruction("TRUE", &mut offset),
             OpCode::False => Chunk::simple_instruction("FALSE", &mut offset),
             OpCode::Invalid => {

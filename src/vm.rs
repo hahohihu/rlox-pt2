@@ -16,6 +16,7 @@ struct VM<'src> {
     source: &'src str,
 }
 
+#[derive(Debug)]
 pub enum InterpretError {
     CompileError = 1,
     RuntimeError = 2,
@@ -134,6 +135,10 @@ impl<'src> VM<'src> {
                             return Err(InterpretError::RuntimeError);
                         }
                     }
+                }
+                OpCode::Not => {
+                    let value = Value::Bool(self.stack.pop().unwrap().falsey());
+                    self.stack.push(value);
                 }
                 OpCode::Add => self.binary_num_op("+", |a, b| a + b)?,
                 OpCode::Sub => self.binary_num_op("-", |a, b| a - b)?,

@@ -172,6 +172,11 @@ impl<'src> Parser<'src> {
                 // SAFETY: a value must be on the stack for negate to work, which primary guarantees
                 unsafe { chunk.emit_byte(OpCode::Negate, token.span) }
             }
+            Token::Bang => {
+                self.primary(chunk)?;
+                // SAFETY: a value must be on the stack for negate to work, which primary guarantees
+                unsafe { chunk.emit_byte(OpCode::Not, token.span) }
+            }
             Token::LParen => {
                 self.expression(chunk, Precedence::None)?;
                 expect!(self, ") after expression", Token::RParen)?;
