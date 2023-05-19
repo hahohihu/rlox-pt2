@@ -66,12 +66,17 @@ impl<'src> VM<'src> {
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
         match (a, b) {
-            (Value::Num(a), Value::Num(b)) => {
-                self.stack.push(op(a, b))
-            }
+            (Value::Num(a), Value::Num(b)) => self.stack.push(op(a, b)),
             (a, b) => {
                 let span = self.get_span(-2..1);
-                self.runtime_error(span, format!("Operator '{name}' takes two numbers. Got a {} ({a}) and a {} ({b}).", a.typename(), b.typename()));
+                self.runtime_error(
+                    span,
+                    format!(
+                        "Operator '{name}' takes two numbers. Got a {} ({a}) and a {} ({b}).",
+                        a.typename(),
+                        b.typename()
+                    ),
+                );
                 return Err(InterpretError::RuntimeError);
             }
         }
@@ -117,12 +122,8 @@ impl<'src> VM<'src> {
                 OpCode::Nil => {
                     self.stack.push(Value::Nil);
                 }
-                OpCode::True => {
-                    self.stack.push(Value::Bool(true))
-                }
-                OpCode::False => {
-                    self.stack.push(Value::Bool(true))
-                }
+                OpCode::True => self.stack.push(Value::Bool(true)),
+                OpCode::False => self.stack.push(Value::Bool(true)),
                 OpCode::Negate => {
                     let val = self.stack.pop().unwrap();
                     match val {
@@ -131,7 +132,10 @@ impl<'src> VM<'src> {
                         }
                         val => {
                             let span = self.get_span(-3..0);
-                            self.runtime_error(span, format!("Tried to negate a {} ({val})", val.typename()));
+                            self.runtime_error(
+                                span,
+                                format!("Tried to negate a {} ({val})", val.typename()),
+                            );
                             return Err(InterpretError::RuntimeError);
                         }
                     }

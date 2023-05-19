@@ -1,4 +1,6 @@
-use std::ops::{Index, Add};
+use std::ops::Index;
+
+use tracing::warn;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Span {
@@ -31,12 +33,12 @@ impl Span {
     }
 
     pub fn unite_many(spans: &[Span]) -> Span {
-        debug_assert!(spans.len() > 0);
-        if spans.len() > 1 {
-            let init = spans[0];
-            spans[1..].into_iter().fold(init, |a, b| a.unite(*b))
+        debug_assert!(!spans.is_empty());
+        if let Some(span) = spans.get(0) {
+            spans[1..].iter().fold(*span, |a, b| a.unite(*b))
         } else {
-            spans[0]
+            warn!("Empty set of spans should never happen");
+            Span::from(0..0)
         }
     }
 }

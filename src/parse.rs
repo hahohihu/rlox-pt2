@@ -1,15 +1,13 @@
 use std::iter::Peekable;
 
-use tracing::event;
 use tracing::instrument;
-use tracing::Level;
 
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::lex::Lexer;
 use crate::lex::Token;
 use crate::object::Object;
-use crate::object::ObjectInner;
+
 use crate::ui;
 use crate::ui::*;
 use crate::value::Value;
@@ -217,12 +215,12 @@ impl<'src> Parser<'src> {
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;
         loop {
-            let Some(op) = self.peek() else {
+            let Some(token) = self.peek() else {
                 break;
             };
-            let op = op?;
+            let operation = token?;
 
-            let prec = Precedence::from(op.data); // todo: everything left associative
+            let prec = Precedence::from(operation.data); // todo: everything left associative
             if prec < min {
                 break;
             }
@@ -233,11 +231,11 @@ impl<'src> Parser<'src> {
             // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
             unsafe {
                 macro_rules! emit {
-                    ($($op:expr),+) => {
-                        emit_bytes!(chunk, op.span; $($op,)+)
+                    ($($opcode:expr),+) => {
+                        emit_bytes!(chunk, operation.span; $($opcode,)+)
                     };
                 }
-                match op.data {
+                match operation.data {
                     Token::Minus => emit!(OpCode::Sub),
                     Token::Plus => emit!(OpCode::Add),
                     Token::Slash => emit!(OpCode::Div),

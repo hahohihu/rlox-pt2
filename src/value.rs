@@ -1,13 +1,13 @@
-use std::{fmt::{Display}, ptr::NonNull};
+use std::fmt::Display;
 
-use crate::object::{ObjectInner, Object};
+use crate::object::Object;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
     Num(f64),
     Bool(bool),
     Nil,
-    Object(Object)
+    Object(Object),
 }
 
 impl Display for Value {
