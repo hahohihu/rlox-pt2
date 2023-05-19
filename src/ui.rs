@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::ops::{Index, Add};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Span {
@@ -19,6 +19,25 @@ impl Index<Span> for str {
     type Output = str;
     fn index(&self, index: Span) -> &Self::Output {
         &self[index.begin as usize..index.end as usize]
+    }
+}
+
+impl Span {
+    pub fn unite(self, other: Span) -> Span {
+        Span {
+            begin: self.begin.min(other.begin),
+            end: self.end.max(other.end),
+        }
+    }
+
+    pub fn unite_many(spans: &[Span]) -> Span {
+        debug_assert!(spans.len() > 0);
+        if spans.len() > 1 {
+            let init = spans[0];
+            spans[1..].into_iter().fold(init, |a, b| a.unite(*b))
+        } else {
+            spans[0]
+        }
     }
 }
 
@@ -56,3 +75,5 @@ impl<T> Spanned<T> {
         Self { data, span }
     }
 }
+
+pub const OFFSET: usize = 12;

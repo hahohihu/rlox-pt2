@@ -8,6 +8,7 @@ use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::lex::Lexer;
 use crate::lex::Token;
+use crate::ui;
 use crate::ui::*;
 use crate::value::Value;
 
@@ -101,9 +102,8 @@ impl From<Token> for Precedence {
 impl ParseError {
     pub fn print(&self, source: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
-        let offset = 12;
         let report = match self {
-            Self::InvalidToken(span) => Report::build(ReportKind::Error, (), offset)
+            Self::InvalidToken(span) => Report::build(ReportKind::Error, (), ui::OFFSET)
                 .with_message("Lexing error")
                 .with_label(
                     Label::new(*span)
@@ -112,7 +112,7 @@ impl ParseError {
                 ),
             Self::EOF { expected } => {
                 let end = source.len().saturating_sub(1);
-                Report::build(ReportKind::Error, (), offset)
+                Report::build(ReportKind::Error, (), ui::OFFSET)
                     .with_message("Unexpected end of file")
                     .with_label(
                         Label::new(Span::from(end..source.len()))
@@ -120,7 +120,7 @@ impl ParseError {
                             .with_message(format!("Expected {expected}")),
                     )
             }
-            Self::ExpectError { expected, got } => Report::build(ReportKind::Error, (), offset)
+            Self::ExpectError { expected, got } => Report::build(ReportKind::Error, (), ui::OFFSET)
                 .with_message("Parse error")
                 .with_label(
                     Label::new(*got)
@@ -166,15 +166,21 @@ impl<'src> Parser<'src> {
         match token.data {
             Token::Minus => {
                 self.primary(chunk)?;
-                unsafe { chunk.emit_byte(OpCode::Sub, token.span) }
+                unsafe { chunk.emit_byte(OpCode::Negate, token.span) }
             }
             Token::LParen => {
                 self.expression(chunk, Precedence::None)?;
                 expect!(self, ") after expression", Token::RParen)?;
             }
             Token::Num => {
-                let n = self.source[token.span].parse().unwrap();
-                chunk.emit_constant(n, token.span)
+                let n = self.source[token.span].parse::<f64>().unwrap();
+                chunk.emit_constant(Value::Num(n), token.span)
+            }
+            Token::True => {
+                chunk.emit_constant(Value::Bool(true), token.span);
+            }
+            Token::False => {
+                chunk.emit_constant(Value::Bool(false), token.span);
             }
             _ => todo!(),
         }

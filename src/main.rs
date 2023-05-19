@@ -9,5 +9,5 @@ mod vm;
 
 fn main() {
     tracing_subscriber::fmt::init();
-    interpret("(42 + 2 * (2 + 2) + 2) / 4");
+    interpret("-true");
 }
