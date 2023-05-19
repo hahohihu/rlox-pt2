@@ -8,6 +8,8 @@ use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::lex::Lexer;
 use crate::lex::Token;
+use crate::object::Object;
+use crate::object::ObjectInner;
 use crate::ui;
 use crate::ui::*;
 use crate::value::Value;
@@ -164,7 +166,7 @@ impl<'src> Parser<'src> {
         })
     }
 
-    /// ensures: Ok(_) ==> A value shall be put on the stack
+    /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[instrument(skip(self, chunk))]
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let token = self.pop("primary")?;
@@ -191,7 +193,6 @@ impl<'src> Parser<'src> {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::True, token.span);
             },
-
             Token::False => unsafe {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::False, token.span);
@@ -200,12 +201,18 @@ impl<'src> Parser<'src> {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::Nil, token.span);
             },
+            Token::String => {
+                // remove parens
+                let str = &self.source[token.span][1..];
+                let str = &str[..str.len() - 1];
+                chunk.emit_constant(Value::Object(Object::make_str(str)), token.span)
+            }
             _ => todo!(),
         }
         Ok(())
     }
 
-    /// ensures: Ok(_) ==> At least one additional value on the stack
+    /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[instrument(skip(self, chunk, min))]
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;

@@ -6,8 +6,9 @@ mod parse;
 mod ui;
 mod value;
 mod vm;
+mod object;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();
-    interpret("!(5 - 4 > 3 * 2 == !nil)")
+    interpret(r#""a" == "a""#)
 }

@@ -1,10 +1,13 @@
-use std::fmt::Display;
+use std::{fmt::{Display}, ptr::NonNull};
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+use crate::object::{ObjectInner, Object};
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
     Num(f64),
     Bool(bool),
     Nil,
+    Object(Object)
 }
 
 impl Display for Value {
@@ -13,6 +16,7 @@ impl Display for Value {
             Self::Num(n) => n.fmt(f),
             Self::Bool(b) => b.fmt(f),
             Self::Nil => write!(f, "nil"),
+            Self::Object(obj) => obj.fmt(f),
         }
     }
 }
@@ -23,6 +27,7 @@ impl Value {
             Self::Bool(_) => "boolean",
             Self::Num(_) => "number",
             Self::Nil => "nil",
+            Self::Object(obj) => obj.typename(),
         }
     }
 
