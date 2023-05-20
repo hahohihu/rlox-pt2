@@ -18,18 +18,16 @@ struct Parser<'src> {
 }
 
 macro_rules! expect {
-    ($self:expr, $msg:expr, $pat:pat => $ret:expr) => {
-        (|| {
-            let tok = $self.pop(stringify!($pat))?;
-            match tok.data {
-                $pat => Ok($ret),
-                _ => return Err(ParseError::ExpectError {
-                    expected: $msg,
-                    got: tok.span
-                }),
-            }
-        })()
-    };
+    ($self:expr, $msg:expr, $pat:pat => $ret:expr) => {{
+        let tok = $self.pop(stringify!($pat))?;
+        match tok.data {
+            $pat => Ok(Spanned::new($ret, tok.span)),
+            _ => return Err(ParseError::ExpectError {
+                expected: $msg,
+                got: tok.span
+            }),
+        }
+    }};
     ($self:expr, $msg:expr, $pat:pat) => {
         expect!($self, $msg, $pat => ())
     }
@@ -255,12 +253,21 @@ impl<'src> Parser<'src> {
         }
         Ok(())
     }
+
+    fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        let tok = expect!(self, "print", Token::Print)?;
+        self.expression(chunk, Precedence::Start)?;
+        unsafe {
+            chunk.emit_byte(OpCode::Print, tok.span);
+        }
+        Ok(())
+    }
 }
 
 pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source);
-    parser.expression(&mut chunk, Precedence::Start)?;
+    parser.statement(&mut chunk)?;
     if let Some(t) = parser.peek() {
         let t = t?;
         return Err(ParseError::ExpectError {

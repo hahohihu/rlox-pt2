@@ -16,6 +16,7 @@ pub enum OpCode {
     // Unary
     Negate,
     Not,
+    Print,
     // Binary
     Add,
     Sub,
@@ -98,6 +99,7 @@ impl Chunk {
             OpCode::Equal => Chunk::simple_instruction("EQUAL", &mut offset),
             OpCode::Greater => Chunk::simple_instruction("GREATER", &mut offset),
             OpCode::Less => Chunk::simple_instruction("LESS", &mut offset),
+            OpCode::Print => Chunk::simple_instruction("PRINT", &mut offset),
             OpCode::Invalid => {
                 println!("INVALID OPCODE: {chunk}");
                 offset += 1;

@@ -110,9 +110,6 @@ impl<'src> VM<'src> {
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {
-                    if let Some(v) = self.stack.pop() {
-                        println!("Returning: {v}");
-                    }
                     return Ok(());
                 }
                 OpCode::Constant => {
@@ -143,6 +140,10 @@ impl<'src> VM<'src> {
                 OpCode::Not => {
                     let value = Value::Bool(self.stack.pop().unwrap().falsey());
                     self.stack.push(value);
+                }
+                OpCode::Print => {
+                    let value = self.stack.pop().unwrap();
+                    println!("{value}");
                 }
                 OpCode::Add => {
                     let b = self.stack.pop().unwrap();
