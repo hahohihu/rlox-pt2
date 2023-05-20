@@ -73,8 +73,8 @@ impl<'src> VM<'src> {
     }
 
     fn read_constant(&mut self) -> Value {
-        let i = self.next_byte() as usize;
-        self.chunk.constants[i]
+        let i = self.next_byte();
+        self.chunk.get_constant(i)
     }
 
     fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {

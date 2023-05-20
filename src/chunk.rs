@@ -35,7 +35,7 @@ pub struct Chunk {
     pub instructions: Vec<u8>,
     pub spans: Vec<Span>,
     // SAFETY INVARIANT: All object values are valid, and there are no duplicate allocations
-    pub constants: Vec<Value>,
+    constants: Vec<Value>,
 }
 
 impl Drop for Chunk {
@@ -59,6 +59,10 @@ impl Chunk {
         self.constants.push(value);
         let index = self.constants.len() - 1;
         index.try_into().expect("Too many constants")
+    }
+
+    pub fn get_constant(&mut self, index: u8) -> Value {
+        self.constants[index as usize]
     }
 
     pub fn disassemble(&self, name: &str, source: &str) {
