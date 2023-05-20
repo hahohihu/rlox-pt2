@@ -35,7 +35,6 @@ impl Object {
     }
 
     pub fn make_str(value: String) -> Object {
-        println!("Making string '{value}'");
         let str = ObjectKind::from(value);
         Self::from_inner(str)
     }
@@ -54,8 +53,8 @@ impl Object {
     }
 
     pub unsafe fn free(&self) {
-        println!("Freeing '{self}'");
         self.object.as_ref().kind.free();
+        drop(Box::from_raw(self.object.as_ptr()));
     }
 
     pub fn compare_str(&self, s: &str) -> bool {
