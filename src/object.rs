@@ -80,7 +80,7 @@ impl Object {
         matches!(inner.kind, ObjectKind::String { .. })
     }
 
-    pub fn concatenate(&self, other: &Self) -> Self {
+    pub fn concatenate_strings(&self, other: &Self) -> Self {
         let (lhs, rhs) = (self.object.as_ref().kind, other.object.as_ref().kind);
         let (ObjectKind::String { str: lhs }, ObjectKind::String {str: rhs}) = (lhs, rhs) else {
             unreachable!("TODO: This is scuffed, but it's a slight defensive measure");

@@ -166,7 +166,7 @@ impl<'src> VM<'src> {
                     match (a, b) {
                         (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
                         (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
-                            let concatenated = a.concatenate(&b);
+                            let concatenated = a.concatenate_strings(&b);
                             self.objects.push(concatenated);
                             self.stack.push(Value::Object(concatenated));
                         }
