@@ -34,7 +34,20 @@ pub struct Chunk {
     // INVARIANT: An OpCode must be followed by however many bytes are specified
     pub instructions: Vec<u8>,
     pub spans: Vec<Span>,
+    // SAFETY INVARIANT: All object values are valid, and there are no duplicate allocations
     pub constants: Vec<Value>,
+}
+
+impl Drop for Chunk {
+    fn drop(&mut self) {
+        for constant in &self.constants {
+            if let Value::Object(obj) = constant {
+                unsafe {
+                    obj.free();
+                }
+            }
+        }
+    }
 }
 
 impl Chunk {

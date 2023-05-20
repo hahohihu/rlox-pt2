@@ -6,7 +6,7 @@ use crate::{
     chunk::{Chunk, OpCode},
     parse::compile,
     ui::{self, Span},
-    value::Value,
+    value::Value, object::Object,
 };
 
 struct VM<'src> {
@@ -14,6 +14,19 @@ struct VM<'src> {
     ip: usize,
     stack: Vec<Value>,
     source: &'src str,
+    // SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
+    objects: Vec<Object>
+}
+
+impl<'src> Drop for VM<'src> {
+    fn drop(&mut self) {
+        for object in &self.objects {
+            unsafe {
+                // SAFETY: See safety invariant on objects
+                object.free();
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -32,6 +45,7 @@ impl<'src> VM<'src> {
             source,
             stack: vec![],
             ip: 0,
+            objects: vec![],
         }
     }
 
@@ -152,7 +166,9 @@ impl<'src> VM<'src> {
                     match (a, b) {
                         (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
                         (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
-                            self.stack.push(Value::Object(a.concatenate(&b)));
+                            let concatenated = a.concatenate(&b);
+                            self.objects.push(concatenated);
+                            self.stack.push(Value::Object(concatenated));
                         }
                         (a, b) => {
                             let span = self.get_span(-2..1);
@@ -204,16 +220,25 @@ pub fn interpret(source: &str) -> InterpretResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::value::Value;
+    use std::sync::atomic::AtomicBool;
+
+    use crate::value::{Value, Comparable};
 
     use super::test_interpret;
 
-    fn check_expr(source: &str, result: impl Into<Value>) {
+    fn setup_test() {
+        use std::sync::atomic::Ordering;
+        static SET: AtomicBool = AtomicBool::new(false);
+        if SET.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+            tracing_subscriber::fmt::init();
+        }
+    }
+
+    fn check_expr(source: &str, result: impl Comparable) {
         match test_interpret(source) {
             Ok(v) => {
-                let stack = v.stack;
-                assert_eq!(stack.len(), 1);
-                assert_eq!(stack[0], result.into());
+                assert_eq!(v.stack.len(), 1);
+                assert!(result.compare(&v.stack[0]));
             }
             Err(e) => {
                 panic!("{e:?}");
@@ -264,8 +289,20 @@ mod tests {
     #[test]
     fn strings() {
         check_expr(r#"return "foo""#, "foo");
+    }
+
+    #[test]
+    fn concatenation() {
         check_expr(r#"return "foo" + "bar""#, "foobar");
+    }
+
+    #[test]
+    fn string_comparison() {
         check_expr(r#"return "foo" == "foo""#, true);
+    }
+
+    #[test]
+    fn compound_string() {
         check_expr(r#"return "foo" + "bar" == "f" + "oo" + "bar""#, true);
     }
 }

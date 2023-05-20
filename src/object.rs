@@ -1,5 +1,7 @@
 use std::{fmt::Display, ptr::NonNull};
 
+use tracing::trace;
+
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 pub struct Object {
@@ -33,6 +35,7 @@ impl Object {
     }
 
     pub fn make_str(value: String) -> Object {
+        println!("Making string '{value}'");
         let str = ObjectKind::from(value);
         Self::from_inner(str)
     }
@@ -48,6 +51,16 @@ impl Object {
             unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
         };
         Object::make_str(unsafe { String::from(lhs.as_ref()) + rhs.as_ref() })
+    }
+
+    pub unsafe fn free(&self) {
+        println!("Freeing '{self}'");
+        self.object.as_ref().kind.free();
+    }
+
+    pub fn compare_str(&self, s: &str) -> bool {
+        let inner = unsafe { self.object.as_ref() };
+        matches!(inner.kind, ObjectKind::String { str } if unsafe { str.as_ref() } == s)
     }
 }
 
@@ -93,9 +106,19 @@ impl From<String> for ObjectKind {
 }
 
 impl ObjectKind {
-    pub fn typename(&self) -> &'static str {
+    fn typename(&self) -> &'static str {
         match self {
             Self::String { .. } => "string",
+        }
+    }
+
+    unsafe fn free(&self) {
+        match self {
+            Self::String { str } => {
+                unsafe {
+                    drop(Box::from_raw(str.as_ptr()));
+                }
+            }
         }
     }
 }
