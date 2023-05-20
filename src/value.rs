@@ -35,3 +35,21 @@ impl Value {
         matches!(self, Self::Bool(false) | Self::Nil)
     }
 }
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Self::Num(value)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Self::Object(Object::make_str(String::from(value)))
+    }
+}

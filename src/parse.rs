@@ -202,7 +202,7 @@ impl<'src> Parser<'src> {
                 let str = &self.source[token.span][1..];
                 let str = &str[..str.len() - 1];
                 chunk.emit_constant(
-                    Value::Object(Object::make_str(String::from(str))),
+                    Value::from(str),
                     token.span,
                 )
             }
@@ -255,10 +255,18 @@ impl<'src> Parser<'src> {
     }
 
     fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        let tok = expect!(self, "print", Token::Print)?;
+        let tok = self.pop("statement")?;
+        let opcode = match tok.data {
+            Token::Print => OpCode::Print,
+            Token::Return => OpCode::Return,
+            _ => return Err(ParseError::ExpectError {
+                expected: "statement",
+                got: tok.span
+            })
+        };
         self.expression(chunk, Precedence::Start)?;
         unsafe {
-            chunk.emit_byte(OpCode::Print, tok.span);
+            chunk.emit_byte(opcode, tok.span);
         }
         Ok(())
     }

@@ -22,6 +22,7 @@ pub enum InterpretError {
     RuntimeError = 2,
 }
 
+type TestInterpretResult<'src> = Result<VM<'src>, InterpretError>;
 type InterpretResult = Result<(), InterpretError>;
 
 impl<'src> VM<'src> {
@@ -120,7 +121,7 @@ impl<'src> VM<'src> {
                     self.stack.push(Value::Nil);
                 }
                 OpCode::True => self.stack.push(Value::Bool(true)),
-                OpCode::False => self.stack.push(Value::Bool(true)),
+                OpCode::False => self.stack.push(Value::Bool(false)),
                 OpCode::Negate => {
                     let val = self.stack.pop().unwrap();
                     match val {
@@ -184,7 +185,7 @@ impl<'src> VM<'src> {
     }
 }
 
-pub fn interpret(source: &str) -> InterpretResult {
+fn test_interpret(source: &str) -> TestInterpretResult {
     let chunk = match compile(source) {
         Ok(chunk) => chunk,
         Err(e) => {
@@ -193,5 +194,78 @@ pub fn interpret(source: &str) -> InterpretResult {
         }
     };
     let mut vm = VM::new(chunk, source);
-    vm.run()
+    vm.run()?;
+    Ok(vm)
+}
+
+pub fn interpret(source: &str) -> InterpretResult {
+    test_interpret(source).map(|_|())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::value::Value;
+
+    use super::test_interpret;
+
+    fn check_expr(source: &str, result: impl Into<Value>) {
+        match test_interpret(source) {
+            Ok(v) => {
+                let stack = v.stack;
+                assert_eq!(stack.len(), 1);
+                assert_eq!(stack[0], result.into());
+            }
+            Err(e) => {
+                panic!("{e:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn primaries() {
+        check_expr("return 1", 1.0);
+        check_expr("return 0.1", 0.1);
+        check_expr("return false", false);
+        check_expr("return true", true);
+        check_expr("return nil", Value::Nil);
+    }
+
+    #[test]
+    fn arithmetic() {
+        check_expr("return 1 + 2 * 3", 7.0);
+        check_expr("return 6 * 6 / 3", 12.0);
+        check_expr("return 20 * 5 / 0.5 - 100.0", 100.0);
+    }
+
+    #[test]
+    fn parens() {
+        check_expr("return 2 * (6 + 1) / (2) -- 100", 107.0);
+        check_expr("return (((1 + 1) / 2) * 3)", 3.0);
+    }
+
+    #[test]
+    fn falsey() {
+        check_expr("return !nil", true);
+        check_expr("return !false", true);
+        check_expr("return !0", false);
+        check_expr("return !true", false);
+        check_expr("return !\"\"", false);
+    }
+
+    #[test]
+    fn numeric_comparison() {
+        check_expr("return 1 > 1", false);
+        check_expr("return 1 >= 1", true);
+        check_expr("return 1 < 1", false);
+        check_expr("return 1 <= 1", true);
+        check_expr("return 1 == 1", true);
+    }
+
+    #[test]
+    fn strings() {
+        check_expr(r#"return "foo""#, "foo");
+        check_expr(r#"return "foo" + "bar""#, "foobar");
+        check_expr(r#"return "foo" == "foo""#, true);
+        check_expr(r#"return "foo" + "bar" == "f" + "oo" + "bar""#, true);
+    }
 }
