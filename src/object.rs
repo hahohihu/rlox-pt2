@@ -14,17 +14,17 @@ impl PartialEq for Object {
 
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unsafe { self.object.as_ref().fmt(f) }
+        unsafe { self.object.as_ref().kind.fmt(f) }
     }
 }
 
 impl Object {
     pub fn typename(&self) -> &'static str {
-        unsafe { self.object.as_ref().typename() }
+        unsafe { self.object.as_ref().kind.typename() }
     }
 
-    fn from_inner(inner: ObjectInner) -> Object {
-        let object = Box::leak(Box::new(inner));
+    fn from_inner(kind: ObjectKind) -> Object {
+        let object = Box::leak(Box::new(ObjectInner { kind }));
         unsafe {
             Object {
                 object: NonNull::new_unchecked(object as *mut _),
@@ -33,35 +33,40 @@ impl Object {
     }
 
     pub fn make_str(value: String) -> Object {
-        let str = ObjectInner::from(value);
+        let str = ObjectKind::from(value);
         Self::from_inner(str)
     }
 
     pub fn is_string(&self) -> bool {
         let inner = unsafe { self.object.as_ref() };
-        matches!(inner, ObjectInner::String { .. })
+        matches!(inner.kind, ObjectKind::String { .. })
     }
 
     pub fn concatenate(&self, other: &Self) -> Self {
-        let (lhs, rhs) = unsafe { (self.object.as_ref(), other.object.as_ref()) };
-        let (ObjectInner::String { str: lhs }, ObjectInner::String {str: rhs}) = (lhs, rhs) else {
+        let (lhs, rhs) = unsafe { (self.object.as_ref().kind, other.object.as_ref().kind) };
+        let (ObjectKind::String { str: lhs }, ObjectKind::String {str: rhs}) = (lhs, rhs) else {
             unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
         };
         Object::make_str(unsafe { String::from(lhs.as_ref()) + rhs.as_ref() })
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct ObjectInner {
+    kind: ObjectKind
+}
+
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug)]
-pub enum ObjectInner {
+enum ObjectKind {
     // ! If mutability is ever added, many of these "as_ref" may become suspicious (as far as a safe API goes)
     String { str: NonNull<str> },
 }
 
-impl PartialEq for ObjectInner {
+impl PartialEq for ObjectKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (ObjectInner::String { str: a }, ObjectInner::String { str: b }) => {
+            (ObjectKind::String { str: a }, ObjectKind::String { str: b }) => {
                 unsafe {
                     // SAFETY: These are always valid, and only take a shared reference
                     a.as_ref() == b.as_ref()
@@ -71,7 +76,7 @@ impl PartialEq for ObjectInner {
     }
 }
 
-impl Display for ObjectInner {
+impl Display for ObjectKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String { str } => unsafe { write!(f, "\"{}\"", str.as_ref()) },
@@ -79,15 +84,15 @@ impl Display for ObjectInner {
     }
 }
 
-impl From<String> for ObjectInner {
+impl From<String> for ObjectKind {
     fn from(value: String) -> Self {
         let boxed = value.into_boxed_str();
         let str = unsafe { NonNull::new_unchecked(Box::leak(boxed) as *mut _) };
-        ObjectInner::String { str }
+        ObjectKind::String { str }
     }
 }
 
-impl ObjectInner {
+impl ObjectKind {
     pub fn typename(&self) -> &'static str {
         match self {
             Self::String { .. } => "string",
