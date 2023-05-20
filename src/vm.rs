@@ -235,12 +235,14 @@ mod tests {
         })
     }
 
-    fn check_expr(source: &str, result: impl Comparable) {
+    fn check_expr(source: &str, result: impl Comparable + std::fmt::Display) {
         setup_test();
         match test_interpret(source) {
             Ok(v) => {
                 assert_eq!(v.stack.len(), 1);
-                assert!(result.compare(&v.stack[0]));
+                if !result.compare(&v.stack[0]) {
+                    panic!("Expected: '{}'\nGot: '{}'", result, &v.stack[0])
+                }
             }
             Err(e) => {
                 panic!("{e:?}");
@@ -306,5 +308,10 @@ mod tests {
     #[test]
     fn compound_string() {
         check_expr(r#"return "foo" + "bar" == "f" + "oo" + "bar""#, true);
+    }
+
+    #[test]
+    fn unicode() {
+        check_expr(r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ""#, "💩👪༕갍⑯ฒڦ");
     }
 }
