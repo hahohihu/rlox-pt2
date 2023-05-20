@@ -26,7 +26,7 @@ impl Display for Object {
 }
 
 impl Object {
-    pub fn typename(&self) -> &'static str {
+    pub fn typename(self) -> &'static str {
         self.object.as_ref().kind.typename()
     }
 
@@ -41,18 +41,18 @@ impl Object {
         Self::from_inner(str)
     }
 
-    pub fn is_string(&self) -> bool {
+    pub fn is_string(self) -> bool {
         self.object.as_ref().kind.is_string()
     }
 
-    pub fn concatenate_strings(&self, other: &Self) -> Self {
+    pub fn concatenate_strings(lhs: Self, rhs: Self) -> Self {
         Self::from_inner(ObjectKind::concatenate_strings(
-            self.object.as_ref().kind,
-            other.object.as_ref().kind,
+            lhs.object.as_ref().kind,
+            rhs.object.as_ref().kind,
         ))
     }
 
-    pub unsafe fn free(&self) {
+    pub unsafe fn free(self) {
         trace!("Freeing {self}");
         self.object.as_ref().kind.free();
         drop(Box::from_raw(self.object.as_ptr()));
