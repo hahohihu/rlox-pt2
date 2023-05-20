@@ -1,9 +1,9 @@
 use std::iter::Peekable;
 
-#[cfg(feature = "verbose_parsing")]
-use tracing::trace;
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
+#[cfg(feature = "verbose_parsing")]
+use tracing::trace;
 
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
@@ -202,10 +202,7 @@ impl<'src> Parser<'src> {
                 // remove parens
                 let str = &self.source[token.span][1..];
                 let str = &str[..str.len() - 1];
-                chunk.emit_constant(
-                    Value::from(str),
-                    token.span,
-                )
+                chunk.emit_constant(Value::from(str), token.span)
             }
             _ => todo!(),
         }
@@ -261,10 +258,12 @@ impl<'src> Parser<'src> {
         let opcode = match tok.data {
             Token::Print => OpCode::Print,
             Token::Return => OpCode::Return,
-            _ => return Err(ParseError::ExpectError {
-                expected: "statement",
-                got: tok.span
-            })
+            _ => {
+                return Err(ParseError::ExpectError {
+                    expected: "statement",
+                    got: tok.span,
+                })
+            }
         };
         self.expression(chunk, Precedence::Start)?;
         unsafe {

@@ -5,10 +5,10 @@ mod lex;
 mod object;
 mod parse;
 mod ui;
-mod value;
-mod vm;
 mod util;
 mod valid;
+mod value;
+mod vm;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();

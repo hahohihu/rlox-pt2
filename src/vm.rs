@@ -4,9 +4,10 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
     chunk::{Chunk, OpCode},
+    object::Object,
     parse::compile,
     ui::{self, Span},
-    value::Value, object::Object,
+    value::Value,
 };
 
 struct VM<'src> {
@@ -15,7 +16,7 @@ struct VM<'src> {
     stack: Vec<Value>,
     source: &'src str,
     // SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
-    objects: Vec<Object>
+    objects: Vec<Object>,
 }
 
 impl<'src> Drop for VM<'src> {
@@ -215,23 +216,25 @@ fn test_interpret(source: &str) -> TestInterpretResult {
 }
 
 pub fn interpret(source: &str) -> InterpretResult {
-    test_interpret(source).map(|_|())
+    test_interpret(source).map(|_| ())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Once};
+    use std::sync::Once;
 
     use tracing::Level;
 
-    use crate::value::{Value, Comparable};
+    use crate::value::{Comparable, Value};
 
     use super::test_interpret;
 
     fn setup_test() {
         static LOGGING: Once = Once::new();
         LOGGING.call_once(|| {
-            tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
+            tracing_subscriber::fmt()
+                .with_max_level(Level::TRACE)
+                .init();
         })
     }
 
@@ -312,6 +315,9 @@ mod tests {
 
     #[test]
     fn unicode() {
-        check_expr(r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ""#, "💩👪༕갍⑯ฒڦ");
+        check_expr(
+            r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ""#,
+            "💩👪༕갍⑯ฒڦ",
+        );
     }
 }
