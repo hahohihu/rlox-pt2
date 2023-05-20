@@ -10,5 +10,5 @@ mod vm;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();
-    interpret(r#""a" == "a""#)
+    interpret(r#""a" + "a" == "aa""#)
 }

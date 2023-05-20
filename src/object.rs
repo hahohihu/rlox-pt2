@@ -23,19 +23,38 @@ impl Object {
         unsafe { self.object.as_ref().typename() }
     }
 
-    pub fn make_str(value: &str) -> Object {
-        let object = ObjectInner::from(value);
-        let object = Box::leak(Box::new(object));
+    fn from_inner(inner: ObjectInner) -> Object {
+        let object = Box::leak(Box::new(inner));
         unsafe {
             Object {
                 object: NonNull::new_unchecked(object as *mut _),
             }
         }
     }
+
+    pub fn make_str(value: String) -> Object {
+        let str = ObjectInner::from(value);
+        Self::from_inner(str)
+    }
+
+    pub fn is_string(&self) -> bool {
+        let inner = unsafe { self.object.as_ref() };
+        matches!(inner, ObjectInner::String { .. })
+    }
+
+    pub fn concatenate(&self, other: &Self) -> Self {
+        let (lhs, rhs) = unsafe { (self.object.as_ref(), other.object.as_ref()) };
+        let (ObjectInner::String { str: lhs }, ObjectInner::String {str: rhs}) = (lhs, rhs) else {
+            unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
+        };
+        Object::make_str(unsafe { String::from(lhs.as_ref()) + rhs.as_ref() })
+    }
 }
 
+#[non_exhaustive]
 #[derive(Copy, Clone, Debug)]
 pub enum ObjectInner {
+    // ! If mutability is ever added, many of these "as_ref" may become suspicious (as far as a safe API goes)
     String { str: NonNull<str> },
 }
 
@@ -60,9 +79,9 @@ impl Display for ObjectInner {
     }
 }
 
-impl From<&str> for ObjectInner {
-    fn from(value: &str) -> Self {
-        let boxed = value.to_string().into_boxed_str();
+impl From<String> for ObjectInner {
+    fn from(value: String) -> Self {
+        let boxed = value.into_boxed_str();
         let str = unsafe { NonNull::new_unchecked(Box::leak(boxed) as *mut _) };
         ObjectInner::String { str }
     }

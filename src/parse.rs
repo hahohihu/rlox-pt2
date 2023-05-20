@@ -203,7 +203,10 @@ impl<'src> Parser<'src> {
                 // remove parens
                 let str = &self.source[token.span][1..];
                 let str = &str[..str.len() - 1];
-                chunk.emit_constant(Value::Object(Object::make_str(str)), token.span)
+                chunk.emit_constant(
+                    Value::Object(Object::make_str(String::from(str))),
+                    token.span,
+                )
             }
             _ => todo!(),
         }

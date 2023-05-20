@@ -144,7 +144,29 @@ impl<'src> VM<'src> {
                     let value = Value::Bool(self.stack.pop().unwrap().falsey());
                     self.stack.push(value);
                 }
-                OpCode::Add => self.binary_num_op("+", |a, b| Value::Num(a + b))?,
+                OpCode::Add => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    match (a, b) {
+                        (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
+                        (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
+                            self.stack.push(Value::Object(a.concatenate(&b)));
+                        }
+                        (a, b) => {
+                            let span = self.get_span(-2..1);
+                            self.runtime_error(
+                                span,
+                                format!(
+                                    "Operator '+' takes two numbers. Got a {} ({a}) and a {} ({b}).",
+                                    a.typename(),
+                                    b.typename()
+                                ),
+                            );
+                            return Err(InterpretError::RuntimeError);
+                        }
+                    }
+                    Ok(())
+                }?,
                 OpCode::Sub => self.binary_num_op("-", |a, b| Value::Num(a - b))?,
                 OpCode::Mul => self.binary_num_op("*", |a, b| Value::Num(a * b))?,
                 OpCode::Div => self.binary_num_op("/", |a, b| Value::Num(a / b))?,
