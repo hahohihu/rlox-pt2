@@ -8,6 +8,7 @@ mod ui;
 mod value;
 mod vm;
 mod util;
+mod valid;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();
