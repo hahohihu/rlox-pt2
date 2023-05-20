@@ -1,14 +1,18 @@
-use std::{fmt::Display, ptr::NonNull};
+use std::{fmt::Display};
 
 #[cfg(feature = "verbose_allocations")]
 use tracing::trace;
 #[cfg(not(feature = "verbose_allocations"))]
 use crate::noop as trace;
 
+/// SAFETY: The presiding assumption here is that we basically just got this from Box or String or whatever and it's okay to use,
+///     but it needs to be a raw pointer so we can share it and garbage collect efficiently
+type ValidPtr<T> = std::ptr::NonNull<T>;
+
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 pub struct Object {
-    object: NonNull<ObjectInner>,
+    object: ValidPtr<ObjectInner>,
 }
 
 impl PartialEq for Object {
@@ -32,7 +36,7 @@ impl Object {
         let object = Box::leak(Box::new(ObjectInner { kind }));
         unsafe {
             Object {
-                object: NonNull::new_unchecked(object as *mut _),
+                object: ValidPtr::new_unchecked(object as *mut _),
             }
         }
     }
@@ -77,7 +81,7 @@ struct ObjectInner {
 #[derive(Copy, Clone, Debug)]
 enum ObjectKind {
     // ! If mutability is ever added, many of these "as_ref" may become suspicious (as far as a safe API goes)
-    String { str: NonNull<str> },
+    String { str: ValidPtr<str> },
 }
 
 impl PartialEq for ObjectKind {
@@ -104,7 +108,7 @@ impl Display for ObjectKind {
 impl From<String> for ObjectKind {
     fn from(value: String) -> Self {
         let boxed = value.into_boxed_str();
-        let str = unsafe { NonNull::new_unchecked(Box::leak(boxed) as *mut _) };
+        let str = unsafe { ValidPtr::new_unchecked(Box::leak(boxed) as *mut _) };
         ObjectKind::String { str }
     }
 }

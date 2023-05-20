@@ -43,6 +43,7 @@ impl Drop for Chunk {
         for constant in &self.constants {
             if let Value::Object(obj) = constant {
                 unsafe {
+                    // SAFETY: See safety invariant on constants
                     obj.free();
                 }
             }
