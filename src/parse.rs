@@ -1,12 +1,14 @@
 use std::iter::Peekable;
 
-use tracing::instrument;
+#[cfg(feature = "verbose_parsing")]
+use tracing::trace;
+#[cfg(not(feature = "verbose_parsing"))]
+use crate::noop as trace;
 
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
 use crate::lex::Lexer;
 use crate::lex::Token;
-use crate::object::Object;
 
 use crate::ui;
 use crate::ui::*;
@@ -142,11 +144,10 @@ impl<'src> Parser<'src> {
         Self { lexer, source }
     }
 
-    #[instrument(skip(self, expected))]
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
         match self.lexer.next() {
             Some(Ok(t)) => {
-                tracing::trace!("popping '{}'", &self.source[t.span]);
+                trace!("popping '{}'", &self.source[t.span]);
                 Ok(t)
             }
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
@@ -163,7 +164,7 @@ impl<'src> Parser<'src> {
     }
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
-    #[instrument(skip(self, chunk))]
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let token = self.pop("primary")?;
         match token.data {
@@ -212,7 +213,7 @@ impl<'src> Parser<'src> {
     }
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
-    #[instrument(skip(self, chunk, min))]
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;
         loop {
@@ -254,6 +255,7 @@ impl<'src> Parser<'src> {
         Ok(())
     }
 
+    #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
         let tok = self.pop("statement")?;
         let opcode = match tok.data {

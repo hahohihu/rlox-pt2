@@ -112,7 +112,7 @@ impl<'src> VM<'src> {
             return Ok(());
         }
         loop {
-            #[cfg(feature = "verbose")]
+            #[cfg(feature = "verbose_vm")]
             {
                 self.chunk.disassemble_instruction(self.ip, self.source);
                 println!("==== STACK ====");
