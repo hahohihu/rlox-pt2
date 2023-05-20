@@ -108,7 +108,6 @@ struct ObjectInner {
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug)]
 enum ObjectKind {
-    // ! If mutability is ever added, many of these "as_ref" may become suspicious (as far as a safe API goes)
     String { str: ValidPtr<str> },
 }
 
@@ -116,6 +115,7 @@ impl PartialEq for ObjectKind {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (ObjectKind::String { str: a }, ObjectKind::String { str: b }) => {
+                // TODO: Interning after benchmarking. Felt premature at chapter 20.
                 a.as_ref() == b.as_ref()
             }
         }
