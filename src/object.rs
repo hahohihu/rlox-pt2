@@ -104,13 +104,13 @@ impl From<String> for ObjectKind {
 }
 
 impl ObjectKind {
-    fn typename(&self) -> &'static str {
+    fn typename(self) -> &'static str {
         match self {
             Self::String { .. } => "string",
         }
     }
 
-    fn is_string(&self) -> bool {
+    fn is_string(self) -> bool {
         matches!(self, ObjectKind::String { .. })
     }
 
@@ -121,11 +121,11 @@ impl ObjectKind {
         ObjectKind::from(String::from(lhs.as_ref()) + rhs.as_ref())
     }
 
-    fn compare_str(&self, other: &str) -> bool {
+    fn compare_str(self, other: &str) -> bool {
         matches!(self, Self::String { str } if str.as_ref() == other)
     }
 
-    unsafe fn free(&self) {
+    unsafe fn free(self) {
         match self {
             Self::String { str } => unsafe {
                 drop(Box::from_raw(str.as_ptr()));
