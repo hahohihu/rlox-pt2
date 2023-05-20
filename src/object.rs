@@ -48,7 +48,7 @@ impl Object {
     pub fn concatenate_strings(&self, other: &Self) -> Self {
         Self::from_inner(ObjectKind::concatenate_strings(
             self.object.as_ref().kind,
-            self.object.as_ref().kind,
+            other.object.as_ref().kind,
         ))
     }
 
