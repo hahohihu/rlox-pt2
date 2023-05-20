@@ -9,7 +9,7 @@ mod valid {
     use std::ptr::NonNull;
 
     #[derive(Debug)]
-    /// SAFETY: The presiding assumption here is that we basically just got this from Box or String or whatever and it's okay to use,
+    /// SAFETY: The presiding assumption here is that we basically just got this from Box and it's okay to use,
     ///     but it needs to be a raw pointer so we can share it and garbage collect efficiently
     pub struct ValidPtr<T: ?Sized>(NonNull<T>);
 
@@ -21,10 +21,6 @@ mod valid {
     impl<T: ?Sized> Copy for ValidPtr<T> {}
 
     impl<T: ?Sized> ValidPtr<T> {
-        pub fn from_box(boxed: Box<T>) -> ValidPtr<T> {
-            unsafe { Self(NonNull::new_unchecked(Box::leak(boxed) as *mut _)) }
-        }
-
         pub fn as_ref(&self) -> &T {
             unsafe {
                 // If there are any problems here, it must be that someone used as_ptr and did something unsafe anyways
@@ -34,6 +30,12 @@ mod valid {
 
         pub fn as_ptr(&self) -> *mut T {
             self.0.as_ptr()
+        }
+    }
+
+    impl<T: ?Sized> From<Box<T>> for ValidPtr<T> {
+        fn from(value: Box<T>) -> Self {
+            unsafe { Self(NonNull::new_unchecked(Box::leak(value) as *mut _)) }
         }
     }
 }
@@ -63,7 +65,7 @@ impl Object {
     }
 
     fn from_inner(kind: ObjectKind) -> Object {
-        let object = ValidPtr::from_box(Box::new(ObjectInner { kind }));
+        let object = ValidPtr::from(Box::new(ObjectInner { kind }));
         Object { object }
     }
 
@@ -131,7 +133,7 @@ impl Display for ObjectKind {
 impl From<String> for ObjectKind {
     fn from(value: String) -> Self {
         let boxed = value.into_boxed_str();
-        let str = ValidPtr::from_box(boxed);
+        let str = ValidPtr::from(boxed);
         ObjectKind::String { str }
     }
 }
