@@ -7,6 +7,7 @@ mod parse;
 mod ui;
 mod value;
 mod vm;
+mod util;
 
 fn main() -> Result<(), InterpretError> {
     tracing_subscriber::fmt::init();

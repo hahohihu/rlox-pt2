@@ -1,6 +1,9 @@
 use std::{fmt::Display, ptr::NonNull};
 
+#[cfg(feature = "verbose_allocations")]
 use tracing::trace;
+#[cfg(not(feature = "verbose_allocations"))]
+use crate::noop as trace;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
@@ -35,6 +38,7 @@ impl Object {
     }
 
     pub fn make_str(value: String) -> Object {
+        trace!("Allocating string '{value}'");
         let str = ObjectKind::from(value);
         Self::from_inner(str)
     }
@@ -53,6 +57,7 @@ impl Object {
     }
 
     pub unsafe fn free(&self) {
+        trace!("Freeing {self}");
         self.object.as_ref().kind.free();
         drop(Box::from_raw(self.object.as_ptr()));
     }

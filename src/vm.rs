@@ -220,21 +220,23 @@ pub fn interpret(source: &str) -> InterpretResult {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::AtomicBool;
+    use std::sync::{Once};
+
+    use tracing::Level;
 
     use crate::value::{Value, Comparable};
 
     use super::test_interpret;
 
     fn setup_test() {
-        use std::sync::atomic::Ordering;
-        static SET: AtomicBool = AtomicBool::new(false);
-        if SET.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
-            tracing_subscriber::fmt::init();
-        }
+        static LOGGING: Once = Once::new();
+        LOGGING.call_once(|| {
+            tracing_subscriber::fmt().with_max_level(Level::TRACE).init();
+        })
     }
 
     fn check_expr(source: &str, result: impl Comparable) {
+        setup_test();
         match test_interpret(source) {
             Ok(v) => {
                 assert_eq!(v.stack.len(), 1);
