@@ -42,16 +42,14 @@ impl Object {
     }
 
     pub fn is_string(&self) -> bool {
-        let inner = self.object.as_ref();
-        matches!(inner.kind, ObjectKind::String { .. })
+        self.object.as_ref().kind.is_string()
     }
 
     pub fn concatenate_strings(&self, other: &Self) -> Self {
-        let (lhs, rhs) = (self.object.as_ref().kind, other.object.as_ref().kind);
-        let (ObjectKind::String { str: lhs }, ObjectKind::String {str: rhs}) = (lhs, rhs) else {
-            unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
-        };
-        Object::make_str(String::from(lhs.as_ref()) + rhs.as_ref())
+        Self::from_inner(ObjectKind::concatenate_strings(
+            self.object.as_ref().kind,
+            self.object.as_ref().kind,
+        ))
     }
 
     pub unsafe fn free(&self) {
@@ -61,10 +59,11 @@ impl Object {
     }
 
     pub fn compare_str(&self, s: &str) -> bool {
-        let inner = self.object.as_ref();
-        matches!(inner.kind, ObjectKind::String { str } if str.as_ref() == s)
+        self.object.as_ref().kind.compare_str(s)
     }
 }
+
+// ==================================================== Internals below here
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 struct ObjectInner {
@@ -109,6 +108,21 @@ impl ObjectKind {
         match self {
             Self::String { .. } => "string",
         }
+    }
+
+    fn is_string(&self) -> bool {
+        matches!(self, ObjectKind::String { .. })
+    }
+
+    fn concatenate_strings(lhs: Self, rhs: Self) -> ObjectKind {
+        let (ObjectKind::String { str: lhs }, ObjectKind::String {str: rhs}) = (lhs, rhs) else {
+            unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
+        };
+        ObjectKind::from(String::from(lhs.as_ref()) + rhs.as_ref())
+    }
+
+    fn compare_str(&self, other: &str) -> bool {
+        matches!(self, Self::String { str } if str.as_ref() == other)
     }
 
     unsafe fn free(&self) {
