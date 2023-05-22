@@ -20,6 +20,7 @@ pub enum OpCode {
     Not,
     Print,
     Pop,
+    DefineGlobal,
     // Binary
     Add,
     Sub,
@@ -110,6 +111,7 @@ impl Chunk {
 
         let chunk = self.instructions[offset];
         let instruction: OpCode = chunk.into();
+        let mut simple = |str| Chunk::simple_instruction(str, &mut offset, &mut stdout);
         match instruction {
             OpCode::Return => Chunk::simple_instruction("RETURN", &mut offset, stdout),
             OpCode::Constant => self.constant_instruction("CONSTANT", &mut offset, stdout),
@@ -127,6 +129,7 @@ impl Chunk {
             OpCode::Less => Chunk::simple_instruction("LESS", &mut offset, stdout),
             OpCode::Print => Chunk::simple_instruction("PRINT", &mut offset, stdout),
             OpCode::Pop => Chunk::simple_instruction("POP", &mut offset, stdout),
+            OpCode::DefineGlobal => simple("DEFINE_GLOBAL"),
             OpCode::Invalid => {
                 writeln!(stdout, "INVALID OPCODE: {chunk}").unwrap();
                 offset += 1;

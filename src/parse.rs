@@ -3,6 +3,7 @@ use std::iter::Peekable;
 
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
+use crate::object::Object;
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
@@ -35,10 +36,13 @@ impl Chunk {
         self.write_byte(byte, span.into());
     }
 
-    fn emit_constant(&mut self, value: Value, span: impl Into<Span>) {
+    fn emit_constant(&mut self, value: Value, span: impl Into<Span>) -> u8 {
         let constant = self.add_constant(value);
         // SAFETY: constant
-        unsafe { emit_bytes!(self, span; OpCode::Constant, constant) }
+        unsafe {
+            emit_bytes!(self, span; OpCode::Constant, constant);
+        }
+        constant
     }
 
     fn emit_return(&mut self) {
@@ -193,7 +197,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 unsafe { chunk.emit_byte(OpCode::Not, token.span) }
             }
             Token::LParen => {
-                self.expression(chunk, Precedence::Start)?;
+                self.expression(chunk)?;
                 let next = self.pop()?;
                 if next.data != Token::RParen {
                     self.mismatched_pair(
@@ -207,7 +211,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             Token::Num => {
                 let n = self.source[token.span].parse::<f64>().unwrap();
-                chunk.emit_constant(Value::Num(n), token.span)
+                chunk.emit_constant(Value::Num(n), token.span);
             }
             Token::True => unsafe {
                 // SAFETY: constant
@@ -225,7 +229,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 // remove parens
                 let str = &self.source[token.span][1..];
                 let str = &str[..str.len() - 1];
-                chunk.emit_constant(Value::from(str), token.span)
+                chunk.emit_constant(Value::from(str), token.span);
             }
             _ => {
                 return Err(ParseError::ExpectError {
@@ -239,7 +243,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> ParseResult<()> {
+    fn expression_bp(&mut self, chunk: &mut Chunk, min: Precedence) -> ParseResult<()> {
         self.primary(chunk)?;
         loop {
             let operation = self.peek()?;
@@ -250,7 +254,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
 
             self.pop().unwrap();
-            self.expression(chunk, prec)?;
+            self.expression_bp(chunk, prec)?;
 
             // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
             unsafe {
@@ -277,6 +281,24 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn expression(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        self.expression_bp(chunk, Precedence::Start)
+    }
+
+    fn check_semicolon(&mut self, lhs: Span) -> ParseResult<()> {
+        let next = self.pop()?;
+        if next.data != Token::Semicolon {
+            self.mismatched_pair(
+                lhs,
+                "This should be terminated with ;",
+                next.span,
+                "There should be a ; here",
+            );
+            return Err(ParseError::Handled);
+        }
+        Ok(())
+    }
+
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let token = self.peek()?;
@@ -287,24 +309,61 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             _ => OpCode::Pop,
         };
-        self.expression(chunk, Precedence::Start)?;
-        let next = self.pop()?;
-        if next.data != Token::Semicolon {
-            self.mismatched_pair(
-                token.span,
-                "This statement should be terminated with ;",
-                next.span,
-                "There should be a ; here",
-            );
-            return Err(ParseError::Handled);
-        }
+        self.expression(chunk)?;
+        self.check_semicolon(token.span)?;
         unsafe {
             chunk.emit_byte(opcode, token.span);
         }
         Ok(())
     }
 
-    fn var_declaration(&mut self, _chunk: &mut Chunk) -> ParseResult<()> {
+    fn expect_identifier(&mut self) -> ParseResult<Spanned<&str>> {
+        let token = self.pop()?;
+        if token.data == Token::Ident {
+            Ok(Spanned {
+                data: &self.source[token.span],
+                span: token.span,
+            })
+        } else {
+            Err(ParseError::ExpectError {
+                expected: "identifier",
+                got: token.span,
+            })
+        }
+    }
+
+    fn pops(&mut self, maybe: Token) -> bool {
+        let Ok(token) = self.peek() else {
+            return false;
+        };
+        if token.data == maybe {
+            self.pop().unwrap();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn var_declaration(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let var = self.pop().unwrap();
+        debug_assert_eq!(var.data, Token::Var);
+
+        let name = self.expect_identifier()?;
+        let namespan = name.span;
+        let name = Object::make_str(String::from(name.data));
+        let nameid = chunk.emit_constant(Value::Object(name), namespan);
+
+        if self.pops(Token::Eq) {
+            self.expression(chunk)?;
+        } else {
+            chunk.emit_constant(Value::Nil, namespan);
+        }
+
+        self.check_semicolon(var.span)?;
+
+        unsafe {
+            emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
+        }
         todo!()
     }
 
