@@ -233,6 +233,7 @@ mod tests {
     snap!(div_0, "print 1 / 0;");
     snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
     snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
+    snap!(unary, "print -1 - -2 == --1 == true;");
 
     snap!(
         falsey,
