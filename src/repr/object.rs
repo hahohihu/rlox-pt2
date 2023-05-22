@@ -1,4 +1,4 @@
-use crate::valid::ValidPtr;
+use super::valid::ValidPtr;
 use std::fmt::Display;
 
 // debugging

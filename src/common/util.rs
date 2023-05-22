@@ -31,7 +31,7 @@ macro_rules! snap {
     ($name:ident, $input:literal) => {
         #[test]
         fn $name() {
-            ::insta::assert_display_snapshot!($crate::util::mock_interpret($input));
+            ::insta::assert_display_snapshot!($crate::common::util::mock_interpret($input));
         }
     };
 }

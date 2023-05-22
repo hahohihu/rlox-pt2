@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::object::Object;
+use super::object::Object;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {

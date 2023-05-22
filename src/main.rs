@@ -8,13 +8,9 @@ use std::{
 
 use vm::interpret;
 
-mod chunk;
+mod common;
 mod compiler;
-mod object;
-mod ui;
-mod util;
-mod valid;
-mod value;
+mod repr;
 mod vm;
 
 fn read_file(filename: &str) -> std::io::Result<String> {

@@ -3,18 +3,18 @@ use std::iter::Peekable;
 
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
-use crate::object::Object;
+use crate::repr::object::Object;
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
 use super::lex::Lexer;
 use super::lex::Token;
-use crate::chunk::Chunk;
-use crate::chunk::OpCode;
+use crate::repr::chunk::Chunk;
+use crate::repr::chunk::OpCode;
+use crate::repr::value::Value;
 
-use crate::ui;
-use crate::ui::*;
-use crate::value::Value;
+use crate::common::ui;
+use crate::common::ui::*;
 
 struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
@@ -402,7 +402,7 @@ pub fn compile(source: &str, output: impl Write) -> ParseResult<Chunk> {
 mod tests {
     use std::io::stderr;
     fn snap_bytecode(source: &str) {
-        crate::util::setup_test();
+        crate::common::util::setup_test();
         let chunk = super::compile(source, stderr()).unwrap();
         let mut out = vec![];
         chunk.disassemble("test", source, &mut out);

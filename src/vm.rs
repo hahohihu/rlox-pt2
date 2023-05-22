@@ -3,11 +3,11 @@ use std::{io::Write, ops::Range};
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
-    chunk::{Chunk, OpCode},
+    common::ui::{self, Span},
     compiler::compile,
-    object::Object,
-    ui::{self, Span},
-    value::Value,
+    repr::chunk::{Chunk, OpCode},
+    repr::object::Object,
+    repr::value::Value,
 };
 
 struct VM<'src, Stderr, Stdout> {

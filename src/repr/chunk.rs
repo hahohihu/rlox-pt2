@@ -2,7 +2,8 @@ use std::io::Write;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use crate::{ui::Span, value::Value};
+use super::value::Value;
+use crate::common::ui::Span;
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]

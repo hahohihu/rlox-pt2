@@ -1,4 +1,4 @@
-use crate::ui::{Span, Spanned};
+use crate::common::ui::{Span, Spanned};
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
@@ -110,7 +110,7 @@ impl<'src> Iterator for Lexer<'src> {
 #[cfg(test)]
 mod tests {
     use super::{Lexer, Token};
-    use crate::ui::Span;
+    use crate::common::ui::Span;
     use Token::*;
 
     fn lex(src: &str) -> Result<Vec<Token>, Span> {
