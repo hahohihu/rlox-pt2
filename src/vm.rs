@@ -4,8 +4,8 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
     chunk::{Chunk, OpCode},
+    compiler::compile,
     object::Object,
-    parse::compile,
     ui::{self, Span},
     value::Value,
 };

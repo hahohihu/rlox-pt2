@@ -9,9 +9,8 @@ use std::{
 use vm::interpret;
 
 mod chunk;
-mod lex;
+mod compiler;
 mod object;
-mod parse;
 mod ui;
 mod util;
 mod valid;
@@ -44,4 +43,18 @@ fn main() -> ExitCode {
         Ok(_) => ExitCode::SUCCESS,
         Err(_) => ExitCode::FAILURE,
     }
+}
+
+#[cfg(test)]
+mod test_errors {
+    use crate::snap;
+    snap!(missing_op, "print 1 1;");
+    snap!(missing_primary, "print ();\n");
+    snap!(missing_parens, "print ((1);\n");
+    snap!(rparens, "print 1);\n");
+    snap!(missing_rhs, "print 1 + ;\n");
+    snap!(missing_lhs, "print + 1;\n");
+    snap!(invalid_token, "print $;");
+    snap!(remaining_tokens, "print 1; x");
+    snap!(floating_expr, "1;");
 }

@@ -7,10 +7,10 @@ use crate::object::Object;
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
+use super::lex::Lexer;
+use super::lex::Token;
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
-use crate::lex::Lexer;
-use crate::lex::Token;
 
 use crate::ui;
 use crate::ui::*;
@@ -401,19 +401,6 @@ pub fn compile(source: &str, output: impl Write) -> ParseResult<Chunk> {
 #[cfg(test)]
 mod tests {
     use std::io::stderr;
-
-    use crate::snap;
-
-    snap!(missing_op, "print 1 1;");
-    snap!(missing_primary, "print ();\n");
-    snap!(missing_parens, "print ((1);\n");
-    snap!(rparens, "print 1);\n");
-    snap!(missing_rhs, "print 1 + ;\n");
-    snap!(missing_lhs, "print + 1;\n");
-    snap!(invalid_token, "print $;");
-    snap!(remaining_tokens, "print 1; x");
-    snap!(floating_expr, "1;");
-
     fn snap_bytecode(source: &str) {
         crate::util::setup_test();
         let chunk = super::compile(source, stderr()).unwrap();
