@@ -9,9 +9,9 @@ stderr:
 Error: Parse error
    ╭─[<unknown>:?:?]
    │
- 1 │ return ();
-   │         ┬  
-   │         ╰── Expected primary
+ 1 │ print ();
+   │        ┬  
+   │        ╰── Expected primary
 ───╯
 
 

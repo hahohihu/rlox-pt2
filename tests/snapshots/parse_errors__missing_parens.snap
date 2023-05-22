@@ -1,0 +1,20 @@
+---
+source: tests/parse_errors.rs
+expression: merged
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:1:13]
+   │
+ 1 │ print ((1);
+   │       ┬   ┬  
+   │       ╰────── This ( is unmatched
+   │           │  
+   │           ╰── There should be a ) here
+───╯
+
+
+

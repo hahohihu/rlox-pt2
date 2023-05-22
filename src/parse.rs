@@ -19,22 +19,6 @@ struct Parser<'src> {
     source: &'src str,
 }
 
-macro_rules! expect {
-    ($self:expr, $msg:expr, $pat:pat => $ret:expr) => {{
-        let tok = $self.pop(stringify!($pat))?;
-        match tok.data {
-            $pat => Spanned::new($ret, tok.span),
-            _ => return Err(ParseError::ExpectError {
-                expected: $msg,
-                got: tok.span
-            }),
-        }
-    }};
-    ($self:expr, $msg:expr, $pat:pat) => {
-        expect!($self, $msg, $pat => ())
-    }
-}
-
 /// The same rules around emit_byte applies
 macro_rules! emit_bytes {
     ($chunk:expr, $span:expr; $($byte:expr),+ $(,)?) => {{
@@ -68,6 +52,7 @@ pub enum ParseError {
     EOF { expected: &'static str },
     InvalidToken(Span),
     ExpectError { expected: &'static str, got: Span },
+    Handled,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -131,6 +116,7 @@ impl ParseError {
                         .with_color(Color::Green)
                         .with_message(format!("Expected {expected}")),
                 ),
+            Self::Handled => return,
         };
         report.finish().eprint(Source::from(source)).unwrap();
     }
@@ -142,6 +128,24 @@ impl<'src> Parser<'src> {
     fn new(source: &'src str) -> Self {
         let lexer = Lexer::new(source).peekable();
         Self { lexer, source }
+    }
+
+    fn mismatched_pair(&self, left: ui::Span, left_msg: &str, right: ui::Span, right_msg: &str) {
+        use ariadne::{Color, Label, Report, ReportKind, Source};
+        Report::build(ReportKind::Error, (), ui::OFFSET)
+            .with_label(
+                Label::new(left)
+                    .with_color(Color::Red)
+                    .with_message(left_msg),
+            )
+            .with_label(
+                Label::new(right)
+                    .with_color(Color::Red)
+                    .with_message(right_msg),
+            )
+            .finish()
+            .eprint(Source::from(self.source))
+            .unwrap();
     }
 
     fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
@@ -180,7 +184,11 @@ impl<'src> Parser<'src> {
             }
             Token::LParen => {
                 self.expression(chunk, Precedence::Start)?;
-                expect!(self, ") after expression", Token::RParen);
+                let next = self.pop("")?;
+                if next.data != Token::RParen {
+                    self.mismatched_pair(token.span, "This ( is unmatched", next.span, "There should be a ) here");
+                    return Err(ParseError::Handled);
+                }
             }
             Token::Num => {
                 let n = self.source[token.span].parse::<f64>().unwrap();
@@ -204,7 +212,12 @@ impl<'src> Parser<'src> {
                 let str = &str[..str.len() - 1];
                 chunk.emit_constant(Value::from(str), token.span)
             }
-            _ => return Err(ParseError::ExpectError { expected: "primary", got: token.span }),
+            _ => {
+                return Err(ParseError::ExpectError {
+                    expected: "primary",
+                    got: token.span,
+                })
+            }
         }
         Ok(())
     }
@@ -254,21 +267,25 @@ impl<'src> Parser<'src> {
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        let tok = self.pop("statement")?;
-        let opcode = match tok.data {
+        let token = self.pop("statement")?;
+        let opcode = match token.data {
             Token::Print => OpCode::Print,
             Token::Return => OpCode::Return,
             _ => {
                 return Err(ParseError::ExpectError {
                     expected: "statement",
-                    got: tok.span,
+                    got: token.span,
                 })
             }
         };
         self.expression(chunk, Precedence::Start)?;
-        expect!(self, "';'", Token::Semicolon);
+        let next = self.pop("")?;
+        if next.data != Token::Semicolon {
+            self.mismatched_pair(token.span, "This statement should be terminated with ;", next.span, "There should be a ; here");
+            return Err(ParseError::Handled);
+        }
         unsafe {
-            chunk.emit_byte(opcode, tok.span);
+            chunk.emit_byte(opcode, token.span);
         }
         Ok(())
     }
