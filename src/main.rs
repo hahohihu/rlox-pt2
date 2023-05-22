@@ -58,3 +58,51 @@ mod test_errors {
     snap!(remaining_tokens, "print 1; x");
     snap!(floating_expr, "1;");
 }
+
+#[cfg(test)]
+mod test_runtime {
+    use crate::snap;
+    snap!(mismatched_add, "print true + 1;");
+    snap!(mismatched_sub, "print true - 1;");
+    snap!(negate_bool, "print -true;");
+    snap!(one, "print 1;");
+    snap!(point_one, "print 0.1;");
+    snap!(print_false, "print false;");
+    snap!(print_nil, "print nil;");
+    snap!(add_mul, "print 1 + 2 * 3;");
+    snap!(mul_div, "print 6 * 6 / 3;");
+    snap!(complex_arithmetic, "print 20 * 5 / 0.5 - 100.0;");
+    snap!(div_0, "print 1 / 0;");
+    snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
+    snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
+    snap!(unary, "print -1 - -2 == --1 == true;");
+
+    snap!(
+        falsey,
+        "
+        print !nil;
+        print !false;
+        print !0;
+        print !true;
+        print !\"\";
+    "
+    );
+
+    snap!(less_than, "print 1 < 1; print 0 < 1; print 2 < 1;");
+    snap!(less_equal, "print 1 <= 1; print 0 <= 1; print 2 <= 1;");
+    snap!(equality, "print 1 == 1; print 0 == 1; print 2 == 1;");
+    snap!(greater_than, "print 1 > 1; print 0 > 1; print 2 > 1;");
+    snap!(greater_equal, "print 1 >= 1; print 0 >= 1; print 2 >= 1;");
+
+    snap!(string, r#"print "foo";"#);
+    snap!(concatenation, r#"print "foo" + "bar";"#);
+    snap!(string_comparison, r#"print "foo" == "foo";"#);
+    snap!(
+        compound_string_comparison,
+        r#"print "foo" + "bar" == "f" + "oo" + "bar";"#
+    );
+    snap!(
+        unicode,
+        r#"print "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#
+    );
+}
