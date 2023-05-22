@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::iter::Peekable;
 
 #[cfg(not(feature = "verbose_parsing"))]
@@ -14,9 +15,10 @@ use crate::ui;
 use crate::ui::*;
 use crate::value::Value;
 
-struct Parser<'src> {
+struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
+    stderr: StdErr,
 }
 
 /// The same rules around emit_byte applies
@@ -88,7 +90,7 @@ impl From<Token> for Precedence {
 }
 
 impl ParseError {
-    pub fn print(&self, source: &str) {
+    pub fn print(&self, stderr: impl Write, source: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
         let report = match self {
             Self::InvalidToken(span) => Report::build(ReportKind::Error, (), ui::OFFSET)
@@ -107,19 +109,23 @@ impl ParseError {
                 ),
             Self::Handled => return,
         };
-        report.finish().eprint(Source::from(source)).unwrap();
+        report.finish().write(Source::from(source), stderr).unwrap();
     }
 }
 
 pub type ParseRes<T> = Result<T, ParseError>;
 
-impl<'src> Parser<'src> {
-    fn new(source: &'src str) -> Self {
+impl<'src, StdErr: Write> Parser<'src, StdErr> {
+    fn new(source: &'src str, stderr: StdErr) -> Self {
         let lexer = Lexer::new(source).peekable();
-        Self { lexer, source }
+        Self {
+            lexer,
+            source,
+            stderr,
+        }
     }
 
-    fn mismatched_pair(&self, left: ui::Span, left_msg: &str, right: ui::Span, right_msg: &str) {
+    fn mismatched_pair(&mut self, left: ui::Span, left_msg: &str, right: ui::Span, right_msg: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
         Report::build(ReportKind::Error, (), ui::OFFSET)
             .with_label(
@@ -133,7 +139,7 @@ impl<'src> Parser<'src> {
                     .with_message(right_msg),
             )
             .finish()
-            .eprint(Source::from(self.source))
+            .write(Source::from(self.source), &mut self.stderr)
             .unwrap();
     }
 
@@ -307,9 +313,9 @@ impl<'src> Parser<'src> {
     }
 }
 
-pub fn compile(source: &str) -> Result<Chunk, ParseError> {
+pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
-    let mut parser = Parser::new(source);
+    let mut parser = Parser::new(source, output);
     parser.top(&mut chunk)?;
     let next = parser.peek()?;
     if next.data != Token::Eof {
@@ -320,4 +326,31 @@ pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     }
     chunk.emit_return();
     Ok(chunk)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::result::Result;
+    use std::error::Error;
+
+    macro_rules! snap_input {
+        ($name:ident, $input:literal) => {
+            #[test]
+            fn $name() -> Result<(), Box<dyn Error>>{
+                let mut stderr = Vec::new();
+                let _ = crate::interpret($input, &mut stderr);
+                let stripped = strip_ansi_escapes::strip(stderr)?;
+                let stderr = String::from_utf8(stripped)?;
+                ::insta::assert_display_snapshot!(stderr);
+                Ok(())
+            }
+        };
+    }
+
+    snap_input!(missing_op, "print 1 1;");
+    snap_input!(missing_primary, "print ();\n");
+    snap_input!(missing_parens, "print ((1);\n");
+    snap_input!(rparens, "print 1);\n");
+    snap_input!(missing_rhs, "print 1 + ;\n");
+    snap_input!(missing_lhs, "print + 1;\n");
 }

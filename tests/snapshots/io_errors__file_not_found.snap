@@ -1,6 +1,0 @@
----
-source: tests/io_errors.rs
-expression: stderr
----
-"Usage: rlox <filename>\n"
-

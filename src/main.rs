@@ -1,5 +1,5 @@
 #![allow(clippy::redundant_pattern_matching)]
-use std::{env::args, fs::File, io::Read, process::ExitCode};
+use std::{env::args, fs::File, io::{Read, stderr}, process::ExitCode};
 
 use vm::interpret;
 
@@ -35,7 +35,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match interpret(&source) {
+    match interpret(&source, stderr()) {
         Ok(_) => ExitCode::SUCCESS,
         Err(_) => ExitCode::FAILURE,
     }

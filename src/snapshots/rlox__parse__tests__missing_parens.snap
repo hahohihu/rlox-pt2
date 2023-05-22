@@ -1,11 +1,7 @@
 ---
-source: tests/parse_errors.rs
-expression: merged
+source: src/parse.rs
+expression: stderr
 ---
-stdout:
-
-
-stderr:
 Error: 
    ╭─[<unknown>:1:13]
    │
@@ -15,6 +11,4 @@ Error:
    │           │  
    │           ╰── There should be a ) here
 ───╯
-
-
 

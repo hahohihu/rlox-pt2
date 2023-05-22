@@ -1,11 +1,7 @@
 ---
-source: tests/parse_errors.rs
-expression: merged
+source: src/parse.rs
+expression: stderr
 ---
-stdout:
-
-
-stderr:
 Error: Parse error
    ╭─[<unknown>:?:?]
    │
@@ -13,6 +9,4 @@ Error: Parse error
    │       ┬  
    │       ╰── Expected primary
 ───╯
-
-
 

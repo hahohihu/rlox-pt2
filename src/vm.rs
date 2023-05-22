@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{ops::Range, io::{Write, stderr}};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
@@ -10,16 +10,17 @@ use crate::{
     value::Value,
 };
 
-struct VM<'src> {
+struct VM<'src, StdErr: Write> {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
     source: &'src str,
+    stderr: StdErr,
     // SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
     objects: Vec<Object>,
 }
 
-impl<'src> Drop for VM<'src> {
+impl<'src, StdErr: Write> Drop for VM<'src, StdErr> {
     fn drop(&mut self) {
         for object in &self.objects {
             unsafe {
@@ -36,17 +37,17 @@ pub enum InterpretError {
     RuntimeError = 2,
 }
 
-type TestInterpretResult<'src> = Result<VM<'src>, InterpretError>;
 type InterpretResult = Result<(), InterpretError>;
 
-impl<'src> VM<'src> {
-    fn new(chunk: Chunk, source: &'src str) -> Self {
+impl<'src, StdErr: Write> VM<'src, StdErr> {
+    fn new(chunk: Chunk, source: &'src str, stderr: StdErr) -> Self {
         Self {
             chunk,
             source,
             stack: vec![],
             ip: 0,
             objects: vec![],
+            stderr
         }
     }
 
@@ -202,32 +203,41 @@ impl<'src> VM<'src> {
     }
 }
 
-fn test_interpret(source: &str) -> TestInterpretResult {
-    let chunk = match compile(source) {
+pub fn interpret(source: &str, mut output: impl Write) -> InterpretResult {
+    let chunk = match compile(source, &mut output) {
         Ok(chunk) => chunk,
         Err(e) => {
-            e.print(source);
+            e.print(&mut output, source);
             return Err(InterpretError::CompileError);
         }
     };
-    let mut vm = VM::new(chunk, source);
-    vm.run()?;
-    Ok(vm)
-}
-
-pub fn interpret(source: &str) -> InterpretResult {
-    test_interpret(source).map(|_| ())
+    let mut vm = VM::new(chunk, source, &mut output);
+    vm.run()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Once;
+    use std::{sync::Once, io::{Stdin, stdin, Write}};
 
     use tracing::Level;
 
     use crate::value::{Comparable, Value};
 
-    use super::test_interpret;
+    use super::{InterpretError, VM};
+    use crate::parse::compile;
+
+    fn test_interpret<'src, 'w, W: Write>(source: &'src str, mut output: &'w mut W) -> Result<VM<'src, &'w mut W>, InterpretError> {
+        let chunk = match compile(source, &mut *output) {
+            Ok(chunk) => chunk,
+            Err(e) => {
+                e.print(output, source);
+                return Err(InterpretError::CompileError);
+            }
+        };
+        let mut vm = VM::new(chunk, source, output);
+        vm.run()?;
+        Ok(vm)
+    }
 
     pub fn setup_test() {
         static LOGGING: Once = Once::new();
@@ -240,7 +250,7 @@ mod tests {
 
     fn check_stack(source: &str, result: impl Comparable + std::fmt::Display) {
         setup_test();
-        match test_interpret(source) {
+        match test_interpret(source, &mut std::io::stderr()) {
             Ok(v) => {
                 assert_eq!(v.stack.len(), 1);
                 if !result.compare(&v.stack[0]) {
@@ -253,10 +263,21 @@ mod tests {
         }
     }
 
+    macro_rules! test_stack {
+        ($name:ident, $input:literal, $expected:expr) => {
+            #[test]
+            fn $name() {
+                check_stack($input, $expected);
+            }
+        }
+    }
+
     fn failure(source: &str) {
         setup_test();
-        assert!(test_interpret(source).is_err());
+        assert!(test_interpret(source, &mut std::io::stderr()).is_err());
     }
+
+    test_stack!(one, "return 1;", 1.0);
 
     #[test]
     fn primaries() {
