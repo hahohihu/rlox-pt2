@@ -19,7 +19,7 @@ pub fn setup_test() {
 pub fn mock_interpret(source: &str) -> String {
     let mut stderr = vec![];
     let mut stdout = vec![];
-    crate::interpret(source, &mut stderr, &mut stdout);
+    let _ = crate::interpret(source, &mut stderr, &mut stdout);
     let stderr = String::from_utf8(strip_ansi_escapes::strip(stderr).unwrap()).unwrap();
     let stdout = String::from_utf8(strip_ansi_escapes::strip(stdout).unwrap()).unwrap();
     format!("stdout:\n{stdout}\n\nstderr:\n{stderr}\n")
