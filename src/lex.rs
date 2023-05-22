@@ -49,7 +49,7 @@ pub enum Token {
     #[regex(r#""[^"]*""#)]
     String,
     // leading digit is mandatory, possibly incongruent with book
-    #[regex("[0-9]+(.[0-9]+)?")]
+    #[regex("[0-9]+(\\.[0-9]+)?")]
     Num,
     #[token("true")]
     True,
@@ -139,5 +139,10 @@ mod tests {
     #[test]
     fn multiline_strings() {
         assert_eq!(lex_ok("\"1\n2\n3\n\""), &[String])
+    }
+
+    #[test]
+    fn sequence_of_numbers() {
+        assert_eq!(lex_ok("1 1"), &[Num, Num]);
     }
 }

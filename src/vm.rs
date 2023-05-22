@@ -253,6 +253,11 @@ mod tests {
         }
     }
 
+    fn failure(source: &str) {
+        setup_test();
+        assert!(test_interpret(source).is_err());
+    }
+
     #[test]
     fn primaries() {
         check_stack("return 1;", 1.0);
@@ -319,5 +324,10 @@ mod tests {
             r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#,
             "💩👪༕갍⑯ฒڦ",
         );
+    }
+
+    #[test]
+    fn sequence() {
+        failure("return 1 1;");
     }
 }
