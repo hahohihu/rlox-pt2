@@ -204,7 +204,7 @@ impl<'src> Parser<'src> {
                 let str = &str[..str.len() - 1];
                 chunk.emit_constant(Value::from(str), token.span)
             }
-            _ => todo!(),
+            _ => return Err(ParseError::ExpectError { expected: "primary", got: token.span }),
         }
         Ok(())
     }

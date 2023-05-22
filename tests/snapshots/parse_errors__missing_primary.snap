@@ -1,0 +1,18 @@
+---
+source: tests/parse_errors.rs
+expression: merged
+---
+stdout:
+
+
+stderr:
+Error: Parse error
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ return ();
+   │         ┬  
+   │         ╰── Expected primary
+───╯
+
+
+
