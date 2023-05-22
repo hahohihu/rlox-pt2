@@ -232,7 +232,7 @@ mod tests {
     snap!(complex_arithmetic, "print 20 * 5 / 0.5 - 100.0;");
     snap!(div_0, "print 1 / 0;");
     snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
-    // snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);"); // todo
+    snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
 
     snap!(
         falsey,

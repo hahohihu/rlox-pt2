@@ -1,0 +1,11 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"print ((1) / (1 + (1 / 0.5)) * 3);\")"
+---
+stdout:
+1
+
+
+stderr:
+
+

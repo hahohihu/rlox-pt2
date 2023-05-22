@@ -245,7 +245,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             let operation = self.peek()?;
 
             let prec = Precedence::from(operation.data); // todo: everything left associative
-            if prec < min {
+            if prec <= min {
                 break;
             }
 
@@ -336,7 +336,9 @@ pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::snap;
+    use std::{io::{stderr, Cursor}, path::Display};
+
+    use crate::{snap, chunk::Chunk, parse::Precedence};
 
     snap!(missing_op, "print 1 1;");
     snap!(missing_primary, "print ();\n");
@@ -347,4 +349,24 @@ mod tests {
     snap!(invalid_token, "print $;");
     snap!(remaining_tokens, "print 1; x");
     snap!(floating_expr, "1;");
+
+    fn snap_bytecode(source: &str) {
+        crate::util::setup_test();
+        let chunk = super::compile(source, stderr()).unwrap();
+        let mut out = vec![];
+        chunk.disassemble("test", source, &mut out);
+        let res = String::from_utf8(out).unwrap();
+        insta::assert_snapshot!(res);
+    }
+
+    macro_rules! bytecode {
+        ($name:ident, $input:literal) => {
+            #[test]
+            fn $name() {
+                snap_bytecode($input);
+            }
+        };
+    }
+
+    bytecode!(order, "print 1 / 2 * 2;");
 }
