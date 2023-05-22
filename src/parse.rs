@@ -293,7 +293,7 @@ impl<'src> Parser<'src> {
 pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source);
-    parser.statement(&mut chunk)?;
+    parser.top(&mut chunk)?;
     if let Some(t) = parser.peek() {
         let t = t?;
         return Err(ParseError::ExpectError {
