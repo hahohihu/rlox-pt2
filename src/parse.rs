@@ -113,7 +113,7 @@ impl ParseError {
     }
 }
 
-pub type ParseRes<T> = Result<T, ParseError>;
+pub type ParseResult<T> = Result<T, ParseError>;
 
 impl<'src, StdErr: Write> Parser<'src, StdErr> {
     fn new(source: &'src str, stderr: StdErr) -> Self {
@@ -158,7 +158,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn pop(&mut self) -> ParseRes<Spanned<Token>> {
+    fn pop(&mut self) -> ParseResult<Spanned<Token>> {
         match self.lexer.next() {
             Some(Ok(t)) => {
                 trace!("popping '{}'", &self.source[t.span]);
@@ -169,7 +169,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn peek(&mut self) -> ParseRes<Spanned<Token>> {
+    fn peek(&mut self) -> ParseResult<Spanned<Token>> {
         match self.lexer.peek() {
             Some(Ok(t)) => Ok(*t),
             Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
@@ -179,7 +179,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+    fn primary(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let token = self.pop()?;
         match token.data {
             Token::Minus => {
@@ -239,7 +239,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
+    fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> ParseResult<()> {
         self.primary(chunk)?;
         loop {
             let operation = self.peek()?;
@@ -278,14 +278,14 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+    fn statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let token = self.peek()?;
         let opcode = match token.data {
             Token::Print => {
                 self.pop().unwrap();
                 OpCode::Print
-            },
-            _ => OpCode::Pop
+            }
+            _ => OpCode::Pop,
         };
         self.expression(chunk, Precedence::Start)?;
         let next = self.pop()?;
@@ -304,11 +304,19 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn declaration(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        self.statement(chunk)
+    fn var_declaration(&mut self, _chunk: &mut Chunk) -> ParseResult<()> {
+        todo!()
     }
 
-    fn top(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+    fn declaration(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let token = self.peek()?;
+        match token.data {
+            Token::Var => self.var_declaration(chunk),
+            _ => self.statement(chunk),
+        }
+    }
+
+    fn top(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         while self.peek()?.data != Token::Eof {
             self.declaration(chunk)?;
         }
@@ -316,7 +324,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 }
 
-pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
+pub fn compile(source: &str, output: impl Write) -> ParseResult<Chunk> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source, output);
     parser.top(&mut chunk)?;
