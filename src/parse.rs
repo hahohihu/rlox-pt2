@@ -23,7 +23,7 @@ macro_rules! expect {
     ($self:expr, $msg:expr, $pat:pat => $ret:expr) => {{
         let tok = $self.pop(stringify!($pat))?;
         match tok.data {
-            $pat => Ok(Spanned::new($ret, tok.span)),
+            $pat => Spanned::new($ret, tok.span),
             _ => return Err(ParseError::ExpectError {
                 expected: $msg,
                 got: tok.span
@@ -180,7 +180,7 @@ impl<'src> Parser<'src> {
             }
             Token::LParen => {
                 self.expression(chunk, Precedence::Start)?;
-                expect!(self, ") after expression", Token::RParen)?;
+                expect!(self, ") after expression", Token::RParen);
             }
             Token::Num => {
                 let n = self.source[token.span].parse::<f64>().unwrap();
@@ -266,8 +266,25 @@ impl<'src> Parser<'src> {
             }
         };
         self.expression(chunk, Precedence::Start)?;
+        expect!(self,"';'",Token::Semicolon);
         unsafe {
             chunk.emit_byte(opcode, tok.span);
+        }
+        Ok(())
+    }
+
+    fn declaration(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        self.statement(chunk)
+    }
+
+    fn top(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
+        loop {
+            let eof = self.peek().is_none();
+            if eof {
+                break;
+            } else {
+                self.declaration(chunk)?;
+            }
         }
         Ok(())
     }

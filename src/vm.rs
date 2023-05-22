@@ -255,68 +255,68 @@ mod tests {
 
     #[test]
     fn primaries() {
-        check_expr("return 1", 1.0);
-        check_expr("return 0.1", 0.1);
-        check_expr("return false", false);
-        check_expr("return true", true);
-        check_expr("return nil", Value::Nil);
+        check_expr("return 1;", 1.0);
+        check_expr("return 0.1;", 0.1);
+        check_expr("return false;", false);
+        check_expr("return true;", true);
+        check_expr("return nil;", Value::Nil);
     }
 
     #[test]
     fn arithmetic() {
-        check_expr("return 1 + 2 * 3", 7.0);
-        check_expr("return 6 * 6 / 3", 12.0);
-        check_expr("return 20 * 5 / 0.5 - 100.0", 100.0);
+        check_expr("return 1 + 2 * 3;", 7.0);
+        check_expr("return 6 * 6 / 3;", 12.0);
+        check_expr("return 20 * 5 / 0.5 - 100.0;", 100.0);
     }
 
     #[test]
     fn parens() {
-        check_expr("return 2 * (6 + 1) / (2) -- 100", 107.0);
-        check_expr("return (((1 + 1) / 2) * 3)", 3.0);
+        check_expr("return 2 * (6 + 1) / (2) -- 100;", 107.0);
+        check_expr("return (((1 + 1) / 2) * 3);", 3.0);
     }
 
     #[test]
     fn falsey() {
-        check_expr("return !nil", true);
-        check_expr("return !false", true);
-        check_expr("return !0", false);
-        check_expr("return !true", false);
-        check_expr("return !\"\"", false);
+        check_expr("return !nil;", true);
+        check_expr("return !false;", true);
+        check_expr("return !0;", false);
+        check_expr("return !true;", false);
+        check_expr("return !\"\";", false);
     }
 
     #[test]
     fn numeric_comparison() {
-        check_expr("return 1 > 1", false);
-        check_expr("return 1 >= 1", true);
-        check_expr("return 1 < 1", false);
-        check_expr("return 1 <= 1", true);
-        check_expr("return 1 == 1", true);
+        check_expr("return 1 > 1;", false);
+        check_expr("return 1 >= 1;", true);
+        check_expr("return 1 < 1;", false);
+        check_expr("return 1 <= 1;", true);
+        check_expr("return 1 == 1;", true);
     }
 
     #[test]
     fn strings() {
-        check_expr(r#"return "foo""#, "foo");
+        check_expr(r#"return "foo";"#, "foo");
     }
 
     #[test]
     fn concatenation() {
-        check_expr(r#"return "foo" + "bar""#, "foobar");
+        check_expr(r#"return "foo" + "bar";"#, "foobar");
     }
 
     #[test]
     fn string_comparison() {
-        check_expr(r#"return "foo" == "foo""#, true);
+        check_expr(r#"return "foo" == "foo";"#, true);
     }
 
     #[test]
     fn compound_string() {
-        check_expr(r#"return "foo" + "bar" == "f" + "oo" + "bar""#, true);
+        check_expr(r#"return "foo" + "bar" == "f" + "oo" + "bar";"#, true);
     }
 
     #[test]
     fn unicode() {
         check_expr(
-            r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ""#,
+            r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#,
             "💩👪༕갍⑯ฒڦ",
         );
     }
