@@ -67,7 +67,7 @@ impl Chunk {
     pub fn get_constant(&mut self, index: u8) -> Value {
         self.constants[index as usize]
     }
-    
+
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
     pub unsafe fn write_byte(&mut self, byte: impl Into<u8>, origin: Span) {
         self.instructions.push(byte.into());
@@ -94,7 +94,12 @@ impl Chunk {
         *offset += 2;
     }
 
-    pub fn disassemble_instruction(&self, mut offset: usize, source: &str, mut stdout: impl Write) -> usize {
+    pub fn disassemble_instruction(
+        &self,
+        mut offset: usize,
+        source: &str,
+        mut stdout: impl Write,
+    ) -> usize {
         write!(stdout, "{:0>4} ", offset).unwrap();
         if offset > 0 && self.spans[offset] == self.spans[offset - 1] {
             write!(stdout, "{:<8}", "|").unwrap();

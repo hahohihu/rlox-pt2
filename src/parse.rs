@@ -336,9 +336,9 @@ pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use std::{io::{stderr, Cursor}, path::Display};
+    use std::io::stderr;
 
-    use crate::{snap, chunk::Chunk, parse::Precedence};
+    use crate::snap;
 
     snap!(missing_op, "print 1 1;");
     snap!(missing_primary, "print ();\n");
