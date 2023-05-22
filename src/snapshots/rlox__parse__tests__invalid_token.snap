@@ -1,0 +1,12 @@
+---
+source: src/parse.rs
+expression: stderr
+---
+Error: Lexing error
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ print $;
+   │       ┬  
+   │       ╰── Invalid token
+───╯
+

@@ -1,0 +1,12 @@
+---
+source: src/parse.rs
+expression: stderr
+---
+Error: Parse error
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ print 1; x
+   │          ┬  
+   │          ╰── Expected statement
+───╯
+

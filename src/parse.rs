@@ -359,4 +359,7 @@ mod tests {
     snap_input!(rparens, "print 1);\n");
     snap_input!(missing_rhs, "print 1 + ;\n");
     snap_input!(missing_lhs, "print + 1;\n");
+    snap_input!(invalid_token, "print $;");
+    snap_input!(remaining_tokens, "print 1; x");
+    snap_input!(floating_expr, "1;");
 }
