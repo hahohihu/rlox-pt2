@@ -1,0 +1,13 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"print 1 == 1; print 0 == 1; print 2 == 1;\")"
+---
+stdout:
+true
+false
+false
+
+
+stderr:
+
+

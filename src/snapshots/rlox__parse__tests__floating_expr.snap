@@ -1,7 +1,11 @@
 ---
 source: src/parse.rs
-expression: stderr
+expression: "crate::util::mock_interpret(\"1;\")"
 ---
+stdout:
+
+
+stderr:
 Error: Parse error
    ╭─[<unknown>:?:?]
    │
@@ -9,4 +13,5 @@ Error: Parse error
    │ ┬  
    │ ╰── Expected statement
 ───╯
+
 

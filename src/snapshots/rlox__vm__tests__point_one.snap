@@ -1,0 +1,11 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"print 0.1;\")"
+---
+stdout:
+0.1
+
+
+stderr:
+
+

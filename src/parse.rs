@@ -336,30 +336,15 @@ pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-    use std::result::Result;
+    use crate::snap;
 
-    macro_rules! snap_err {
-        ($name:ident, $input:literal) => {
-            #[test]
-            fn $name() -> Result<(), Box<dyn Error>> {
-                let mut stderr = Vec::new();
-                let _ = crate::interpret($input, &mut stderr);
-                let stripped = strip_ansi_escapes::strip(stderr)?;
-                let stderr = String::from_utf8(stripped)?;
-                ::insta::assert_display_snapshot!(stderr);
-                Ok(())
-            }
-        };
-    }
-
-    snap_err!(missing_op, "print 1 1;");
-    snap_err!(missing_primary, "print ();\n");
-    snap_err!(missing_parens, "print ((1);\n");
-    snap_err!(rparens, "print 1);\n");
-    snap_err!(missing_rhs, "print 1 + ;\n");
-    snap_err!(missing_lhs, "print + 1;\n");
-    snap_err!(invalid_token, "print $;");
-    snap_err!(remaining_tokens, "print 1; x");
-    snap_err!(floating_expr, "1;");
+    snap!(missing_op, "print 1 1;");
+    snap!(missing_primary, "print ();\n");
+    snap!(missing_parens, "print ((1);\n");
+    snap!(rparens, "print 1);\n");
+    snap!(missing_rhs, "print 1 + ;\n");
+    snap!(missing_lhs, "print + 1;\n");
+    snap!(invalid_token, "print $;");
+    snap!(remaining_tokens, "print 1; x");
+    snap!(floating_expr, "1;");
 }

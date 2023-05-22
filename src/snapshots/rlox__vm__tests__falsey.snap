@@ -1,0 +1,15 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"\n        print !nil;\n        print !false;\n        print !0;\n        print !true;\n        print !\\\"\\\";\n    \")"
+---
+stdout:
+true
+true
+false
+false
+false
+
+
+stderr:
+
+

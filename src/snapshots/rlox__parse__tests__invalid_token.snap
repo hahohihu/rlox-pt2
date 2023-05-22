@@ -1,7 +1,11 @@
 ---
 source: src/parse.rs
-expression: stderr
+expression: "crate::util::mock_interpret(\"print $;\")"
 ---
+stdout:
+
+
+stderr:
 Error: Lexing error
    ╭─[<unknown>:?:?]
    │
@@ -9,4 +13,5 @@ Error: Lexing error
    │       ┬  
    │       ╰── Invalid token
 ───╯
+
 

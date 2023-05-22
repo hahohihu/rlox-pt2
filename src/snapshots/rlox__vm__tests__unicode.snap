@@ -1,0 +1,11 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(r#\"print \"💩\" + \"👪\" + \"༕\" + \"갍\" + \"⑯\" + \"ฒ\" + \"ڦ\";\"#)"
+---
+stdout:
+"💩👪༕갍⑯ฒڦ"
+
+
+stderr:
+
+

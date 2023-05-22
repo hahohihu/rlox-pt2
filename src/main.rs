@@ -2,7 +2,7 @@
 use std::{
     env::args,
     fs::File,
-    io::{stderr, Read},
+    io::{stderr, stdout, Read},
     process::ExitCode,
 };
 
@@ -40,7 +40,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match interpret(&source, stderr()) {
+    match interpret(&source, stderr(), stdout()) {
         Ok(_) => ExitCode::SUCCESS,
         Err(_) => ExitCode::FAILURE,
     }

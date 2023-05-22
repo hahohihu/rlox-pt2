@@ -1,0 +1,11 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"print nil;\")"
+---
+stdout:
+nil
+
+
+stderr:
+
+

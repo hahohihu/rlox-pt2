@@ -10,17 +10,18 @@ use crate::{
     value::Value,
 };
 
-struct VM<'src, StdErr: Write> {
+struct VM<'src, Stderr, Stdout> {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
     source: &'src str,
-    stderr: StdErr,
+    stderr: Stderr,
+    stdout: Stdout,
     // SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
     objects: Vec<Object>,
 }
 
-impl<'src, StdErr: Write> Drop for VM<'src, StdErr> {
+impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
     fn drop(&mut self) {
         for object in &self.objects {
             unsafe {
@@ -39,8 +40,8 @@ pub enum InterpretError {
 
 type InterpretResult = Result<(), InterpretError>;
 
-impl<'src, StdErr: Write> VM<'src, StdErr> {
-    fn new(chunk: Chunk, source: &'src str, stderr: StdErr) -> Self {
+impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
+    fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         Self {
             chunk,
             source,
@@ -48,6 +49,7 @@ impl<'src, StdErr: Write> VM<'src, StdErr> {
             ip: 0,
             objects: vec![],
             stderr,
+            stdout,
         }
     }
 
@@ -160,7 +162,7 @@ impl<'src, StdErr: Write> VM<'src, StdErr> {
                 }
                 OpCode::Print => {
                     let value = self.stack.pop().unwrap();
-                    println!("{value}");
+                    writeln!(self.stdout, "{value}").unwrap();
                 }
                 OpCode::Add => {
                     let b = self.stack.pop().unwrap();
@@ -203,167 +205,61 @@ impl<'src, StdErr: Write> VM<'src, StdErr> {
     }
 }
 
-pub fn interpret(source: &str, mut output: impl Write) -> InterpretResult {
-    let chunk = match compile(source, &mut output) {
+pub fn interpret(source: &str, mut stderr: impl Write, mut stdout: impl Write) -> InterpretResult {
+    let chunk = match compile(source, &mut stderr) {
         Ok(chunk) => chunk,
         Err(e) => {
-            e.print(&mut output, source);
+            e.print(&mut stderr, source);
             return Err(InterpretError::CompileError);
         }
     };
-    let mut vm = VM::new(chunk, source, &mut output);
+    let mut vm = VM::new(chunk, source, &mut stderr, &mut stdout);
     vm.run()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{io::Write, sync::Once};
+    use crate::snap;
+    snap!(mismatched_add, "print true + 1;");
+    snap!(mismatched_sub, "print true - 1;");
+    snap!(negate_bool, "print -true;");
+    snap!(one, "print 1;");
+    snap!(point_one, "print 0.1;");
+    snap!(print_false, "print false;");
+    snap!(print_nil, "print nil;");
+    snap!(add_mul, "print 1 + 2 * 3;");
+    snap!(mul_div, "print 6 * 6 / 3;");
+    snap!(complex_arithmetic, "print 20 * 5 / 0.5 - 100.0;");
+    snap!(div_0, "print 1 / 0;");
+    snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
+    // snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);"); // todo
 
-    use tracing::Level;
+    snap!(
+        falsey,
+        "
+        print !nil;
+        print !false;
+        print !0;
+        print !true;
+        print !\"\";
+    "
+    );
 
-    use crate::value::{Comparable, Value};
+    snap!(less_than, "print 1 < 1; print 0 < 1; print 2 < 1;");
+    snap!(less_equal, "print 1 <= 1; print 0 <= 1; print 2 <= 1;");
+    snap!(equality, "print 1 == 1; print 0 == 1; print 2 == 1;");
+    snap!(greater_than, "print 1 > 1; print 0 > 1; print 2 > 1;");
+    snap!(greater_equal, "print 1 >= 1; print 0 >= 1; print 2 >= 1;");
 
-    use super::{InterpretError, VM};
-    use crate::parse::compile;
-
-    fn test_interpret<'src, 'w, W: Write>(
-        source: &'src str,
-        output: &'w mut W,
-    ) -> Result<VM<'src, &'w mut W>, InterpretError> {
-        let chunk = match compile(source, &mut *output) {
-            Ok(chunk) => chunk,
-            Err(e) => {
-                e.print(output, source);
-                return Err(InterpretError::CompileError);
-            }
-        };
-        let mut vm = VM::new(chunk, source, output);
-        vm.run()?;
-        Ok(vm)
-    }
-
-    pub fn setup_test() {
-        static LOGGING: Once = Once::new();
-        LOGGING.call_once(|| {
-            tracing_subscriber::fmt()
-                .with_max_level(Level::TRACE)
-                .init();
-        })
-    }
-
-    fn check_stack(source: &str, result: impl Comparable + std::fmt::Display) {
-        setup_test();
-        match test_interpret(source, &mut std::io::stderr()) {
-            Ok(v) => {
-                assert_eq!(v.stack.len(), 1);
-                if !result.compare(&v.stack[0]) {
-                    panic!("Expected: '{}'\nGot: '{}'", result, &v.stack[0])
-                }
-            }
-            Err(e) => {
-                panic!("{e:?}");
-            }
-        }
-    }
-
-    macro_rules! test_stack {
-        ($name:ident, $input:literal, $expected:expr) => {
-            #[test]
-            fn $name() {
-                check_stack($input, $expected);
-            }
-        };
-    }
-
-    macro_rules! snap_err {
-        ($name:ident, $input:literal) => {
-            #[test]
-            fn $name() -> Result<(), Box<dyn std::error::Error>> {
-                let mut stderr = Vec::new();
-                let _ = crate::interpret($input, &mut stderr);
-                let stripped = strip_ansi_escapes::strip(stderr)?;
-                let stderr = String::from_utf8(stripped)?;
-                ::insta::assert_display_snapshot!(stderr);
-                Ok(())
-            }
-        };
-    }
-    snap_err!(mismatched_add, "return true + 1;");
-    snap_err!(mismatched_sub, "return true - 1;");
-    snap_err!(negate_bool, "return -true;");
-
-    test_stack!(one, "return 1;", 1.0);
-
-    #[test]
-    fn primaries() {
-        check_stack("return 1;", 1.0);
-        check_stack("return 0.1;", 0.1);
-        check_stack("return false;", false);
-        check_stack("return true;", true);
-        check_stack("return nil;", Value::Nil);
-    }
-
-    #[test]
-    fn arithmetic() {
-        check_stack("return 1 + 2 * 3;", 7.0);
-        check_stack("return 6 * 6 / 3;", 12.0);
-        check_stack("return 20 * 5 / 0.5 - 100.0;", 100.0);
-    }
-
-    #[test]
-    fn div_zero() {
-        check_stack("return 1 / 0;", f64::INFINITY);
-    }
-
-    #[test]
-    fn parens() {
-        check_stack("return 2 * (6 + 1) / (2) -- 100;", 107.0);
-        check_stack("return (((1 + 1) / 2) * 3);", 3.0);
-    }
-
-    #[test]
-    fn falsey() {
-        check_stack("return !nil;", true);
-        check_stack("return !false;", true);
-        check_stack("return !0;", false);
-        check_stack("return !true;", false);
-        check_stack("return !\"\";", false);
-    }
-
-    #[test]
-    fn numeric_comparison() {
-        check_stack("return 1 > 1;", false);
-        check_stack("return 1 >= 1;", true);
-        check_stack("return 1 < 1;", false);
-        check_stack("return 1 <= 1;", true);
-        check_stack("return 1 == 1;", true);
-    }
-
-    #[test]
-    fn strings() {
-        check_stack(r#"return "foo";"#, "foo");
-    }
-
-    #[test]
-    fn concatenation() {
-        check_stack(r#"return "foo" + "bar";"#, "foobar");
-    }
-
-    #[test]
-    fn string_comparison() {
-        check_stack(r#"return "foo" == "foo";"#, true);
-    }
-
-    #[test]
-    fn compound_string() {
-        check_stack(r#"return "foo" + "bar" == "f" + "oo" + "bar";"#, true);
-    }
-
-    #[test]
-    fn unicode() {
-        check_stack(
-            r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#,
-            "💩👪༕갍⑯ฒڦ",
-        );
-    }
+    snap!(string, r#"print "foo";"#);
+    snap!(concatenation, r#"print "foo" + "bar";"#);
+    snap!(string_comparison, r#"print "foo" == "foo";"#);
+    snap!(
+        compound_string_comparison,
+        r#"print "foo" + "bar" == "f" + "oo" + "bar";"#
+    );
+    snap!(
+        unicode,
+        r#"print "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#
+    );
 }

@@ -1,0 +1,11 @@
+---
+source: src/vm.rs
+expression: "crate::util::mock_interpret(\"print 2 * (6 + 1) / (2) -- 100;\")"
+---
+stdout:
+107
+
+
+stderr:
+
+
