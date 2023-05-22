@@ -311,6 +311,11 @@ mod tests {
     }
 
     #[test]
+    fn div_zero() {
+        check_stack("return 1 / 0;", f64::INFINITY);
+    }
+
+    #[test]
     fn parens() {
         check_stack("return 2 * (6 + 1) / (2) -- 100;", 107.0);
         check_stack("return (((1 + 1) / 2) * 3);", 3.0);
