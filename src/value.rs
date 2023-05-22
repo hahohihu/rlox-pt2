@@ -53,32 +53,3 @@ impl From<&str> for Value {
         Self::Object(Object::make_str(String::from(value)))
     }
 }
-
-/// This is mostly for testing
-pub trait Comparable {
-    fn compare(&self, v: &Value) -> bool;
-}
-
-impl Comparable for bool {
-    fn compare(&self, v: &Value) -> bool {
-        matches!(v, Value::Bool(b) if b == self)
-    }
-}
-
-impl Comparable for f64 {
-    fn compare(&self, v: &Value) -> bool {
-        matches!(v, Value::Num(n) if n == self)
-    }
-}
-
-impl Comparable for &str {
-    fn compare(&self, v: &Value) -> bool {
-        matches!(v, Value::Object(obj) if obj.compare_str(self))
-    }
-}
-
-impl Comparable for Value {
-    fn compare(&self, v: &Value) -> bool {
-        self == v
-    }
-}

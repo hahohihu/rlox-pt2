@@ -10,29 +10,29 @@ use tracing::trace;
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 pub struct Object {
-    object: ValidPtr<ObjectInner>,
+    inner: ValidPtr<ObjectInner>,
 }
 
 impl PartialEq for Object {
     fn eq(&self, other: &Self) -> bool {
-        self.object.as_ref() == other.object.as_ref()
+        self.inner.as_ref() == other.inner.as_ref()
     }
 }
 
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.object.as_ref().kind.fmt(f)
+        self.inner.as_ref().kind.fmt(f)
     }
 }
 
 impl Object {
     pub fn typename(self) -> &'static str {
-        self.object.as_ref().kind.typename()
+        self.inner.as_ref().kind.typename()
     }
 
     fn from_inner(kind: ObjectKind) -> Object {
         let object = ValidPtr::from(Box::new(ObjectInner { kind }));
-        Object { object }
+        Object { inner: object }
     }
 
     pub fn make_str(value: String) -> Object {
@@ -42,24 +42,24 @@ impl Object {
     }
 
     pub fn is_string(self) -> bool {
-        self.object.as_ref().kind.is_string()
+        self.inner.as_ref().kind.is_string()
     }
 
     pub fn concatenate_strings(lhs: Self, rhs: Self) -> Self {
         Self::from_inner(ObjectKind::concatenate_strings(
-            lhs.object.as_ref().kind,
-            rhs.object.as_ref().kind,
+            lhs.inner.as_ref().kind,
+            rhs.inner.as_ref().kind,
         ))
     }
 
     pub unsafe fn free(self) {
         trace!("Freeing {self}");
-        self.object.as_ref().kind.free();
-        drop(Box::from_raw(self.object.as_ptr()));
+        self.inner.as_ref().kind.free();
+        drop(Box::from_raw(self.inner.as_ptr()));
     }
 
     pub fn compare_str(&self, s: &str) -> bool {
-        self.object.as_ref().kind.compare_str(s)
+        self.inner.as_ref().kind.compare_str(s)
     }
 }
 
