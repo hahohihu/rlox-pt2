@@ -11,7 +11,7 @@ Error: Parse error
    │
  1 │ print 1; x
    │          ┬  
-   │          ╰── Expected statement
+   │          ╰── Expected primary
 ───╯
 
 

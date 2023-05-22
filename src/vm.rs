@@ -132,6 +132,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::Return => {
                     return Ok(());
                 }
+                OpCode::Pop => {
+                    self.stack.pop().expect("ICE: bad codegen");
+                }
                 OpCode::Constant => {
                     let constant = self.read_constant();
                     self.stack.push(constant);

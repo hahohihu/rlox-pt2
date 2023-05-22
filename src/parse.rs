@@ -279,16 +279,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        let token = self.pop()?;
+        let token = self.peek()?;
         let opcode = match token.data {
-            Token::Print => OpCode::Print,
-            Token::Return => OpCode::Return,
-            _ => {
-                return Err(ParseError::ExpectError {
-                    expected: "statement",
-                    got: token.span,
-                })
-            }
+            Token::Print => {
+                self.pop().unwrap();
+                OpCode::Print
+            },
+            _ => OpCode::Pop
         };
         self.expression(chunk, Precedence::Start)?;
         let next = self.pop()?;

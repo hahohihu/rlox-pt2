@@ -6,12 +6,5 @@ stdout:
 
 
 stderr:
-Error: Parse error
-   ╭─[<unknown>:?:?]
-   │
- 1 │ 1;
-   │ ┬  
-   │ ╰── Expected statement
-───╯
 
 
