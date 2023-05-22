@@ -1,0 +1,12 @@
+---
+source: src/vm.rs
+expression: stderr
+---
+Error: Operator '+' takes two numbers. Got a boolean (true) and a number (1).
+   ╭─[<unknown>:1:13]
+   │
+ 1 │ return true + 1;
+   │ ───────────────  
+   │                   
+───╯
+

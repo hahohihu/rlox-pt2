@@ -100,12 +100,12 @@ impl<'src, StdErr: Write> VM<'src, StdErr> {
         Ok(())
     }
 
-    fn runtime_error(&self, span: Span, message: String) {
+    fn runtime_error(&mut self, span: Span, message: String) {
         Report::build(ReportKind::Error, (), ui::OFFSET)
             .with_message(message)
             .with_label(Label::new(span).with_color(Color::Red))
             .finish()
-            .eprint(Source::from(self.source))
+            .write(Source::from(self.source), &mut self.stderr)
             .unwrap();
     }
 
@@ -275,10 +275,20 @@ mod tests {
         };
     }
 
-    fn failure(source: &str) {
-        setup_test();
-        assert!(test_interpret(source, &mut std::io::stderr()).is_err());
+    macro_rules! snap_err {
+        ($name:ident, $input:literal) => {
+            #[test]
+            fn $name() -> Result<(), Box<dyn std::error::Error>> {
+                let mut stderr = Vec::new();
+                let _ = crate::interpret($input, &mut stderr);
+                let stripped = strip_ansi_escapes::strip(stderr)?;
+                let stderr = String::from_utf8(stripped)?;
+                ::insta::assert_display_snapshot!(stderr);
+                Ok(())
+            }
+        };
     }
+    snap_err!(mismatched_add, "return true + 1;");
 
     test_stack!(one, "return 1;", 1.0);
 
@@ -348,10 +358,5 @@ mod tests {
             r#"return "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#,
             "💩👪༕갍⑯ฒڦ",
         );
-    }
-
-    #[test]
-    fn sequence() {
-        failure("return 1 1;");
     }
 }

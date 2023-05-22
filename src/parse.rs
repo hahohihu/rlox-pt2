@@ -339,7 +339,7 @@ mod tests {
     use std::error::Error;
     use std::result::Result;
 
-    macro_rules! snap_input {
+    macro_rules! snap_err {
         ($name:ident, $input:literal) => {
             #[test]
             fn $name() -> Result<(), Box<dyn Error>> {
@@ -353,13 +353,13 @@ mod tests {
         };
     }
 
-    snap_input!(missing_op, "print 1 1;");
-    snap_input!(missing_primary, "print ();\n");
-    snap_input!(missing_parens, "print ((1);\n");
-    snap_input!(rparens, "print 1);\n");
-    snap_input!(missing_rhs, "print 1 + ;\n");
-    snap_input!(missing_lhs, "print + 1;\n");
-    snap_input!(invalid_token, "print $;");
-    snap_input!(remaining_tokens, "print 1; x");
-    snap_input!(floating_expr, "1;");
+    snap_err!(missing_op, "print 1 1;");
+    snap_err!(missing_primary, "print ();\n");
+    snap_err!(missing_parens, "print ((1);\n");
+    snap_err!(rparens, "print 1);\n");
+    snap_err!(missing_rhs, "print 1 + ;\n");
+    snap_err!(missing_lhs, "print + 1;\n");
+    snap_err!(invalid_token, "print $;");
+    snap_err!(remaining_tokens, "print 1; x");
+    snap_err!(floating_expr, "1;");
 }
