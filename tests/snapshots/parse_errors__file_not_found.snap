@@ -1,0 +1,6 @@
+---
+source: tests/parse_errors.rs
+expression: stderr
+---
+"Usage: rlox <filename>\n"
+
