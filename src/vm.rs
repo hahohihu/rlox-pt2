@@ -118,7 +118,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         loop {
             #[cfg(feature = "verbose_vm")]
             {
-                self.chunk.disassemble_instruction(self.ip, self.source);
+                self.chunk.disassemble_instruction(self.ip, self.source, std::io::stdout());
                 println!("==== STACK ====");
                 let stack_len = self.stack.len().saturating_sub(8);
                 for value in &self.stack[stack_len..] {
