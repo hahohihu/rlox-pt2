@@ -289,6 +289,8 @@ mod tests {
         };
     }
     snap_err!(mismatched_add, "return true + 1;");
+    snap_err!(mismatched_sub, "return true - 1;");
+    snap_err!(negate_bool, "return -true;");
 
     test_stack!(one, "return 1;", 1.0);
 

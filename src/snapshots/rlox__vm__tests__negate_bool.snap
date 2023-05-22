@@ -1,0 +1,12 @@
+---
+source: src/vm.rs
+expression: stderr
+---
+Error: Tried to negate a boolean (true)
+   ╭─[<unknown>:1:13]
+   │
+ 1 │ return -true;
+   │         ────  
+   │                
+───╯
+
