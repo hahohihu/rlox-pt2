@@ -1,5 +1,10 @@
 #![allow(clippy::redundant_pattern_matching)]
-use std::{env::args, fs::File, io::{Read, stderr}, process::ExitCode};
+use std::{
+    env::args,
+    fs::File,
+    io::{stderr, Read},
+    process::ExitCode,
+};
 
 use vm::interpret;
 

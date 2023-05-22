@@ -1,4 +1,4 @@
-use std::{ops::Range, io::{Write, stderr}};
+use std::{io::Write, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
@@ -47,7 +47,7 @@ impl<'src, StdErr: Write> VM<'src, StdErr> {
             stack: vec![],
             ip: 0,
             objects: vec![],
-            stderr
+            stderr,
         }
     }
 
@@ -217,7 +217,7 @@ pub fn interpret(source: &str, mut output: impl Write) -> InterpretResult {
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::Once, io::{Stdin, stdin, Write}};
+    use std::{io::Write, sync::Once};
 
     use tracing::Level;
 
@@ -226,7 +226,10 @@ mod tests {
     use super::{InterpretError, VM};
     use crate::parse::compile;
 
-    fn test_interpret<'src, 'w, W: Write>(source: &'src str, mut output: &'w mut W) -> Result<VM<'src, &'w mut W>, InterpretError> {
+    fn test_interpret<'src, 'w, W: Write>(
+        source: &'src str,
+        output: &'w mut W,
+    ) -> Result<VM<'src, &'w mut W>, InterpretError> {
         let chunk = match compile(source, &mut *output) {
             Ok(chunk) => chunk,
             Err(e) => {
@@ -269,7 +272,7 @@ mod tests {
             fn $name() {
                 check_stack($input, $expected);
             }
-        }
+        };
     }
 
     fn failure(source: &str) {

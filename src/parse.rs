@@ -125,7 +125,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn mismatched_pair(&mut self, left: ui::Span, left_msg: &str, right: ui::Span, right_msg: &str) {
+    fn mismatched_pair(
+        &mut self,
+        left: ui::Span,
+        left_msg: &str,
+        right: ui::Span,
+        right_msg: &str,
+    ) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
         Report::build(ReportKind::Error, (), ui::OFFSET)
             .with_label(
@@ -330,13 +336,13 @@ pub fn compile(source: &str, output: impl Write) -> Result<Chunk, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use std::result::Result;
     use std::error::Error;
+    use std::result::Result;
 
     macro_rules! snap_input {
         ($name:ident, $input:literal) => {
             #[test]
-            fn $name() -> Result<(), Box<dyn Error>>{
+            fn $name() -> Result<(), Box<dyn Error>> {
                 let mut stderr = Vec::new();
                 let _ = crate::interpret($input, &mut stderr);
                 let stripped = strip_ansi_escapes::strip(stderr)?;
