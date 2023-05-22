@@ -1,4 +1,10 @@
-use vm::{interpret, InterpretError};
+#![allow(clippy::redundant_pattern_matching)]
+use std::{
+    io::{stdin, Read},
+    process::ExitCode, env::args, fs::File,
+};
+
+use vm::interpret;
 
 mod chunk;
 mod lex;
@@ -10,7 +16,30 @@ mod valid;
 mod value;
 mod vm;
 
-fn main() -> Result<(), InterpretError> {
+fn read_file(filename: &str) -> std::io::Result<String> {
+    let mut file = File::open(filename)?;
+    let mut source = String::new();
+    file.read_to_string(&mut source)?;
+    Ok(source)
+}
+
+fn main() -> ExitCode {
     tracing_subscriber::fmt::init();
-    interpret(r#"print "a" + "a" == "aa""#)
+    let mut args = args();
+    args.next();
+    let Some(filename) = args.next() else {
+        eprintln!("Usage: rlox <filename>");
+        return ExitCode::FAILURE;
+    };
+    let source = match read_file(&filename) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Failed to read {filename} with error: {:?}", e);
+            return ExitCode::FAILURE;
+        }
+    };
+    match interpret(&source) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(_) => ExitCode::FAILURE
+    }
 }

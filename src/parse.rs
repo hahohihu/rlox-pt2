@@ -266,7 +266,7 @@ impl<'src> Parser<'src> {
             }
         };
         self.expression(chunk, Precedence::Start)?;
-        expect!(self,"';'",Token::Semicolon);
+        expect!(self, "';'", Token::Semicolon);
         unsafe {
             chunk.emit_byte(opcode, tok.span);
         }
