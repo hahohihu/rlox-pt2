@@ -8,7 +8,9 @@ macro_rules! snap_input {
             let file = ::assert_fs::NamedTempFile::new(stringify!($name))?;
             file.write_str($code)?;
 
-            let output = ::std::process::Command::cargo_bin("rlox")?.arg(file.path()).output()?;
+            let output = ::std::process::Command::cargo_bin("rlox")?
+                .arg(file.path())
+                .output()?;
             let stdout = ::std::string::String::from_utf8(output.stdout).unwrap();
             let stderr = ::std::string::String::from_utf8(output.stderr).unwrap();
             let merged = ::std::format!("stdout:\n{stdout}\n\nstderr:\n{stderr}\n\n");

@@ -159,9 +159,7 @@ impl<'src> Parser<'src> {
 
     fn peek(&mut self) -> ParseRes<Spanned<Token>> {
         match self.lexer.peek() {
-            Some(Ok(t)) => {
-                Ok(*t)
-            }
+            Some(Ok(t)) => Ok(*t),
             Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
             None => Ok(self.eof()),
         }

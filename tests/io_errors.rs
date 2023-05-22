@@ -1,5 +1,5 @@
-use std::process::Command;
 use assert_cmd::prelude::CommandCargoExt;
+use std::process::Command;
 
 #[test]
 fn file_not_found() {
