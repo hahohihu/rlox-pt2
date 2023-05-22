@@ -49,7 +49,6 @@ impl Chunk {
 
 #[derive(Debug)]
 pub enum ParseError {
-    EOF { expected: &'static str },
     InvalidToken(Span),
     ExpectError { expected: &'static str, got: Span },
     Handled,
@@ -99,16 +98,6 @@ impl ParseError {
                         .with_color(Color::Red)
                         .with_message("Invalid token"),
                 ),
-            Self::EOF { expected } => {
-                let end = source.len().saturating_sub(1);
-                Report::build(ReportKind::Error, (), ui::OFFSET)
-                    .with_message("Unexpected end of file")
-                    .with_label(
-                        Label::new(Span::from(end..source.len()))
-                            .with_color(Color::Green)
-                            .with_message(format!("Expected {expected}")),
-                    )
-            }
             Self::ExpectError { expected, got } => Report::build(ReportKind::Error, (), ui::OFFSET)
                 .with_message("Parse error")
                 .with_label(
@@ -148,29 +137,40 @@ impl<'src> Parser<'src> {
             .unwrap();
     }
 
-    fn pop(&mut self, expected: &'static str) -> ParseRes<Spanned<Token>> {
+    fn eof(&self) -> Spanned<Token> {
+        let len = self.source.len();
+        let span = ui::Span::from(len - 1..len);
+        Spanned {
+            data: Token::Eof,
+            span,
+        }
+    }
+
+    fn pop(&mut self) -> ParseRes<Spanned<Token>> {
         match self.lexer.next() {
             Some(Ok(t)) => {
                 trace!("popping '{}'", &self.source[t.span]);
                 Ok(t)
             }
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
-            None => Err(ParseError::EOF { expected }),
+            None => Ok(self.eof()),
         }
     }
 
-    fn peek(&mut self) -> Option<ParseRes<Spanned<Token>>> {
-        let tok = self.lexer.peek()?;
-        Some(match tok {
-            Ok(t) => Ok(*t),
-            Err(t) => Err(ParseError::InvalidToken(*t)),
-        })
+    fn peek(&mut self) -> ParseRes<Spanned<Token>> {
+        match self.lexer.peek() {
+            Some(Ok(t)) => {
+                Ok(*t)
+            }
+            Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
+            None => Ok(self.eof()),
+        }
     }
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn primary(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        let token = self.pop("primary")?;
+        let token = self.pop()?;
         match token.data {
             Token::Minus => {
                 self.primary(chunk)?;
@@ -184,9 +184,14 @@ impl<'src> Parser<'src> {
             }
             Token::LParen => {
                 self.expression(chunk, Precedence::Start)?;
-                let next = self.pop("")?;
+                let next = self.pop()?;
                 if next.data != Token::RParen {
-                    self.mismatched_pair(token.span, "This ( is unmatched", next.span, "There should be a ) here");
+                    self.mismatched_pair(
+                        token.span,
+                        "This ( is unmatched",
+                        next.span,
+                        "There should be a ) here",
+                    );
                     return Err(ParseError::Handled);
                 }
             }
@@ -227,17 +232,14 @@ impl<'src> Parser<'src> {
     fn expression(&mut self, chunk: &mut Chunk, min: Precedence) -> Result<(), ParseError> {
         self.primary(chunk)?;
         loop {
-            let Some(token) = self.peek() else {
-                break;
-            };
-            let operation = token?;
+            let operation = self.peek()?;
 
             let prec = Precedence::from(operation.data); // todo: everything left associative
             if prec < min {
                 break;
             }
 
-            self.pop("unreachable").unwrap();
+            self.pop().unwrap();
             self.expression(chunk, prec)?;
 
             // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
@@ -267,7 +269,7 @@ impl<'src> Parser<'src> {
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        let token = self.pop("statement")?;
+        let token = self.pop()?;
         let opcode = match token.data {
             Token::Print => OpCode::Print,
             Token::Return => OpCode::Return,
@@ -279,9 +281,14 @@ impl<'src> Parser<'src> {
             }
         };
         self.expression(chunk, Precedence::Start)?;
-        let next = self.pop("")?;
+        let next = self.pop()?;
         if next.data != Token::Semicolon {
-            self.mismatched_pair(token.span, "This statement should be terminated with ;", next.span, "There should be a ; here");
+            self.mismatched_pair(
+                token.span,
+                "This statement should be terminated with ;",
+                next.span,
+                "There should be a ; here",
+            );
             return Err(ParseError::Handled);
         }
         unsafe {
@@ -295,13 +302,8 @@ impl<'src> Parser<'src> {
     }
 
     fn top(&mut self, chunk: &mut Chunk) -> Result<(), ParseError> {
-        loop {
-            let eof = self.peek().is_none();
-            if eof {
-                break;
-            } else {
-                self.declaration(chunk)?;
-            }
+        while self.peek()?.data != Token::Eof {
+            self.declaration(chunk)?;
         }
         Ok(())
     }
@@ -311,11 +313,11 @@ pub fn compile(source: &str) -> Result<Chunk, ParseError> {
     let mut chunk = Chunk::new();
     let mut parser = Parser::new(source);
     parser.top(&mut chunk)?;
-    if let Some(t) = parser.peek() {
-        let t = t?;
+    let next = parser.peek()?;
+    if next.data != Token::Eof {
         return Err(ParseError::ExpectError {
             expected: "EOF",
-            got: t.span,
+            got: next.span,
         });
     }
     chunk.emit_return();

@@ -84,6 +84,7 @@ pub enum Token {
     Var,
     #[token("while")]
     While,
+    Eof,
 }
 
 pub struct Lexer<'src>(logos::SpannedIter<'src, Token>);
