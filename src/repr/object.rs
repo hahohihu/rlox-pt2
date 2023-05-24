@@ -1,11 +1,6 @@
-use super::valid::ValidPtr;
+use super::alloc;
+use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
-
-// debugging
-#[cfg(not(feature = "verbose_allocations"))]
-use crate::noop as trace;
-#[cfg(feature = "verbose_allocations")]
-use tracing::trace;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
@@ -25,41 +20,50 @@ impl Display for Object {
     }
 }
 
+impl From<ObjectKind> for Object {
+    fn from(value: ObjectKind) -> Self {
+        Self::from(ObjectInner { kind: value })
+    }
+}
+
+impl From<ObjectInner> for Object {
+    fn from(value: ObjectInner) -> Self {
+        Object {
+            inner: ValidPtr::from(Box::new(value)),
+        }
+    }
+}
+
+impl From<String> for Object {
+    fn from(value: String) -> Self {
+        alloc::trace!("Allocating string '{value}'");
+        Self::from(ObjectKind::from(value))
+    }
+}
+
+impl From<UnsafeString> for Object {
+    fn from(str: UnsafeString) -> Self {
+        Self::from(ObjectKind::String { str })
+    }
+}
+
 impl Object {
     pub fn typename(self) -> &'static str {
         self.inner.as_ref().kind.typename()
-    }
-
-    fn from_inner(kind: ObjectKind) -> Object {
-        let object = ValidPtr::from(Box::new(ObjectInner { kind }));
-        Object { inner: object }
-    }
-
-    pub fn make_str(value: String) -> Object {
-        trace!("Allocating string '{value}'");
-        let str = ObjectKind::from(value);
-        Self::from_inner(str)
     }
 
     pub fn is_string(self) -> bool {
         self.inner.as_ref().kind.is_string()
     }
 
-    pub fn concatenate_strings(lhs: Self, rhs: Self) -> Self {
-        Self::from_inner(ObjectKind::concatenate_strings(
-            lhs.inner.as_ref().kind,
-            rhs.inner.as_ref().kind,
-        ))
+    pub unsafe fn assume_string(self) -> UnsafeString {
+        self.inner.as_ref().kind.assume_string()
     }
 
     pub unsafe fn free(self) {
-        trace!("Freeing {self}");
+        alloc::trace!("Freeing {self}");
         self.inner.as_ref().kind.free();
         drop(Box::from_raw(self.inner.as_ptr()));
-    }
-
-    pub fn compare_str(&self, s: &str) -> bool {
-        self.inner.as_ref().kind.compare_str(s)
     }
 }
 
@@ -71,35 +75,24 @@ struct ObjectInner {
 }
 
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ObjectKind {
-    String { str: ValidPtr<str> },
-}
-
-impl PartialEq for ObjectKind {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (ObjectKind::String { str: a }, ObjectKind::String { str: b }) => {
-                // TODO: Interning after benchmarking. Felt premature at chapter 20.
-                a.as_ref() == b.as_ref()
-            }
-        }
-    }
+    String { str: UnsafeString },
 }
 
 impl Display for ObjectKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String { str } => write!(f, "\"{}\"", str.as_ref()),
+            Self::String { str } => write!(f, "\"{str}\""),
         }
     }
 }
 
 impl From<String> for ObjectKind {
     fn from(value: String) -> Self {
-        let boxed = value.into_boxed_str();
-        let str = ValidPtr::from(boxed);
-        ObjectKind::String { str }
+        ObjectKind::String {
+            str: UnsafeString::from(value),
+        }
     }
 }
 
@@ -114,22 +107,15 @@ impl ObjectKind {
         matches!(self, ObjectKind::String { .. })
     }
 
-    fn concatenate_strings(lhs: Self, rhs: Self) -> ObjectKind {
-        let (ObjectKind::String { str: lhs }, ObjectKind::String {str: rhs}) = (lhs, rhs) else {
-            unreachable!("TODO: This is scuffed, but it's a slight defensive measure");
-        };
-        ObjectKind::from(String::from(lhs.as_ref()) + rhs.as_ref())
-    }
-
-    fn compare_str(self, other: &str) -> bool {
-        matches!(self, Self::String { str } if str.as_ref() == other)
+    unsafe fn assume_string(self) -> UnsafeString {
+        match self {
+            Self::String { str } => str,
+        }
     }
 
     unsafe fn free(self) {
         match self {
-            Self::String { str } => unsafe {
-                drop(Box::from_raw(str.as_ptr()));
-            },
+            Self::String { str } => str.free(),
         }
     }
 }

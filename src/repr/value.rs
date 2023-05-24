@@ -50,6 +50,6 @@ impl From<f64> for Value {
 
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
-        Self::Object(Object::make_str(String::from(value)))
+        Self::Object(Object::from(String::from(value)))
     }
 }

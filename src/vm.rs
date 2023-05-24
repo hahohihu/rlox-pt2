@@ -177,7 +177,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     match (a, b) {
                         (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
                         (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
-                            let concatenated = Object::concatenate_strings(a, b);
+                            let (a, b) = unsafe { (a.assume_string(), b.assume_string()) };
+                            let concatenated = Object::from(a + b);
                             self.objects.push(concatenated);
                             self.stack.push(Value::Object(concatenated));
                         }

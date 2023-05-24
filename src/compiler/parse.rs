@@ -350,7 +350,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         let name = self.expect_identifier()?;
         let namespan = name.span;
-        let name = Object::make_str(String::from(name.data));
+        let name = Object::from(String::from(name.data));
         let nameid = chunk.emit_constant(Value::Object(name), namespan);
 
         if self.pops(Token::Eq) {
