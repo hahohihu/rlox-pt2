@@ -27,10 +27,10 @@ pub fn mock_interpret(source: &str) -> String {
 
 
 #[cfg(test)]
-#[cfg(feature = "miri_test")]
+#[cfg(feature = "no_snap")]
 pub use noop as assert_snapshot;
 #[cfg(test)]
-#[cfg(not(feature = "miri_test"))]
+#[cfg(not(feature = "no_snap"))]
 pub use ::insta::assert_snapshot as assert_snapshot;
 
 #[cfg(test)]
