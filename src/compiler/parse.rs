@@ -278,7 +278,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         None
     }
 
-    fn variable_access_or_assignment(&mut self, chunk: &mut Chunk, ident_span: Span, can_assign: bool) -> ParseResult<()> {
+    fn variable_access_or_assignment(
+        &mut self,
+        chunk: &mut Chunk,
+        ident_span: Span,
+        can_assign: bool,
+    ) -> ParseResult<()> {
         let name = &self.source[ident_span];
         let follow_byte: u8;
         let set_opcode: OpCode;
@@ -293,14 +298,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             get_opcode = OpCode::GetGlobal;
         }
         if let Some(eq) = self.matches(Token::Eq) {
-            if can_assign {
-                self.expression(chunk, can_assign)?;
-                unsafe {
-                    emit_bytes!(chunk, ident_span; set_opcode, follow_byte);
-                }
-            } else {
+            if !can_assign {
                 self.simple_error(eq.span, "Invalid assignment at this expression depth");
                 return Err(ParseError::Handled);
+            }
+            self.expression(chunk, can_assign)?;
+            unsafe {
+                emit_bytes!(chunk, ident_span; set_opcode, follow_byte);
             }
         } else {
             unsafe {
