@@ -343,4 +343,16 @@ mod test_runtime {
         print n == n;
         "#
     }
+
+    snap!{
+        shadow_and_reuse,
+        "
+        var a = 0;
+        {
+            var a = a;
+            print a;
+        }
+        print a;
+        "
+    }
 }
