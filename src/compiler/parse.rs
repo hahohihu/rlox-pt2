@@ -18,7 +18,7 @@ use crate::repr::value::Value;
 use crate::common::ui;
 use crate::common::ui::*;
 
-pub type LocalSymbol = InternedU8;
+type LocalSymbol = InternedU8;
 struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
