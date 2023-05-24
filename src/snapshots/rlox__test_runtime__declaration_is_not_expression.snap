@@ -11,9 +11,9 @@ Error:
    │
  1 │ var a == 1;
    │ ─┬─   ─┬  
-   │  ╰──────── This should be terminated with ;
+   │  ╰──────── This statement should be terminated with ;
    │        │  
-   │        ╰── There should be a ; here
+   │        ╰── Expected ;
 ───╯
 
 

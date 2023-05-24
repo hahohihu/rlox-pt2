@@ -21,6 +21,8 @@ struct Parser<'src, StdErr: Write> {
     source: &'src str,
     stderr: StdErr,
     can_assign: bool,
+    local_count: u8,
+    scope_depth: u16,
 }
 
 /// The same rules around emit_byte applies
@@ -127,7 +129,9 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             lexer,
             source,
             stderr,
-            can_assign: true
+            can_assign: true,
+            local_count: 0,
+            scope_depth: 0,
         }
     }
 
@@ -335,13 +339,41 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         if next.data != Token::Semicolon {
             self.mismatched_pair(
                 lhs,
-                "This should be terminated with ;",
+                "This statement should be terminated with ;",
                 next.span,
-                "There should be a ; here",
+                "Expected ;",
             );
             return Err(ParseError::Handled);
         }
         Ok(())
+    }
+
+    fn block(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let lbrace = self.pop().unwrap();
+        debug_assert_eq!(lbrace.data, Token::LBrace);
+        loop {
+            let token = self.peek()?;
+            if let Token::RBrace | Token::Eof = token.data {
+                break;
+            }
+            self.declaration(chunk)?;
+        }
+
+        let rbrace = self.pop()?;
+        if rbrace.data == Token::RBrace {
+            Ok(())
+        } else {
+            self.mismatched_pair(lbrace.span, "This { must be terminated", rbrace.span, "Expected }");
+            Err(ParseError::Handled)
+        }
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
     }
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
@@ -351,6 +383,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Print => {
                 self.pop().unwrap();
                 OpCode::Print
+            }
+            Token::LBrace => {
+                self.begin_scope();
+                let block = self.block(chunk);
+                self.end_scope();
+                return block;
             }
             _ => OpCode::Pop,
         };

@@ -1,6 +1,6 @@
 ---
-source: src/parse.rs
-expression: "crate::util::mock_interpret(\"print 1);\\n\")"
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"print 1);\\n\")"
 ---
 stdout:
 
@@ -11,9 +11,9 @@ Error:
    │
  1 │ print 1);
    │ ──┬──  ┬  
-   │   ╰─────── This should be terminated with ;
+   │   ╰─────── This statement should be terminated with ;
    │        │  
-   │        ╰── There should be a ; here
+   │        ╰── Expected ;
 ───╯
 
 

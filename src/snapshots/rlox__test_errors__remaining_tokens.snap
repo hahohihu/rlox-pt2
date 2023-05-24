@@ -11,9 +11,9 @@ Error:
    │
  1 │ print 1; x
    │          ┬  
-   │          ╰── This should be terminated with ;
+   │          ╰── This statement should be terminated with ;
    │          │  
-   │          ╰── There should be a ; here
+   │          ╰── Expected ;
 ───╯
 
 
