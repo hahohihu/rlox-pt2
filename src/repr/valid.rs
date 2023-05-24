@@ -1,5 +1,6 @@
 use std::ptr::NonNull;
 
+#[repr(transparent)]
 #[derive(Debug)]
 /// SAFETY: The presiding assumption here is that we basically just got this from Box and it's okay to use,
 ///     but it needs to be a raw pointer so we can share it and garbage collect efficiently

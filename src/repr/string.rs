@@ -6,6 +6,7 @@ use std::{
     ops::Add,
 };
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 pub struct UnsafeString {
     str: ValidPtr<str>,

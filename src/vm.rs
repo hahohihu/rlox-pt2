@@ -1,16 +1,13 @@
-use std::{collections::HashMap, io::Write, ops::Range};
+use std::{io::Write, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
+    repr::chunk::{Chunk, OpCode},
     repr::object::Object,
     repr::value::Value,
-    repr::{
-        chunk::{Chunk, OpCode},
-        string::UnsafeString,
-    },
 };
 
 struct VM<'src, Stderr, Stdout> {
@@ -23,8 +20,8 @@ struct VM<'src, Stderr, Stdout> {
     /// SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
     /// This is used to look for inaccessible objects to free
     objects: Vec<Object>,
-    /// Keys are owned by Chunk as constants. Values will be freed via objects
-    globals: HashMap<UnsafeString, Value>,
+    /// Chunk is the source of truth for indices
+    globals: Vec<Option<Value>>,
 }
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
@@ -56,7 +53,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             objects: vec![],
             stderr,
             stdout,
-            globals: Default::default(),
+            globals: vec![],
         }
     }
 
@@ -86,11 +83,6 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn read_constant(&mut self) -> Value {
         let i = self.next_byte();
         self.chunk.get_constant(i)
-    }
-
-    fn read_literal(&mut self) -> UnsafeString {
-        let i = self.next_byte();
-        self.chunk.get_literal(i)
     }
 
     fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
@@ -123,6 +115,14 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             .unwrap();
     }
 
+    fn set_global(&mut self, index: u8, value: Value) {
+        let index = index as usize;
+        while self.globals.len() <= index {
+            self.globals.push(None);
+        }
+        self.globals[index] = Some(value);
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
@@ -153,16 +153,16 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.stack.pop().unwrap();
                 }
                 OpCode::DefineGlobal => {
-                    let name = self.read_literal();
+                    let index = self.next_byte();
                     let value = self.stack.last().unwrap();
-                    self.globals.insert(name, *value);
+                    self.set_global(index, *value);
                     self.stack.pop().unwrap();
                 }
                 OpCode::GetGlobal => {
-                    let name = self.read_literal();
-                    let Some(value) = self.globals.get(&name) else {
+                    let index = self.next_byte();
+                    let Some(Some(value)) = self.globals.get(index as usize) else {
                         let span = self.get_span(-2..0);
-                        self.runtime_error(span, format!("Undefined variable: {name}"));
+                        self.runtime_error(span, format!("Undefined variable: {}", self.chunk.get_global(index)));
                         return Err(InterpretError::RuntimeError);
                     };
                     self.stack.push(*value);

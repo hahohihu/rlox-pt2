@@ -43,7 +43,7 @@ pub struct Chunk {
     // Owned by this
     constants: Vec<Value>,
     // Owned by this
-    literals: Vec<UnsafeString>,
+    global_names: Vec<UnsafeString>,
 }
 
 impl Drop for Chunk {
@@ -56,7 +56,7 @@ impl Drop for Chunk {
                 }
             }
         }
-        for literal in &self.literals {
+        for literal in &self.global_names {
             unsafe {
                 literal.free();
             }
@@ -79,10 +79,10 @@ impl Chunk {
         self.constants[index as usize]
     }
 
-    pub fn add_literal(&mut self, literal: &str) -> u8 {
-        // Could replace this with a hashmap but it's probably small enough not to matter
+    pub fn add_global(&mut self, literal: &str) -> u8 {
+        // Could replace this with a hashmap but it's probably small enough not to matter (for now TM)
         if let Some((i, _)) = self
-            .literals
+            .global_names
             .iter()
             .enumerate()
             .find(|(_, s)| s.as_str() == literal)
@@ -90,14 +90,14 @@ impl Chunk {
             i as u8 // guaranteed to be correct because of expect below
         } else {
             let literal = UnsafeString::from(literal);
-            self.literals.push(literal);
-            let index = self.literals.len() - 1;
+            self.global_names.push(literal);
+            let index = self.global_names.len() - 1;
             index.try_into().expect("Too many literals")
         }
     }
 
-    pub fn get_literal(&self, index: u8) -> UnsafeString {
-        self.literals[index as usize]
+    pub fn get_global(&self, index: u8) -> UnsafeString {
+        self.global_names[index as usize]
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
