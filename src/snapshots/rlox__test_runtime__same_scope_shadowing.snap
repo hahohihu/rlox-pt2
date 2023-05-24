@@ -1,0 +1,12 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        {\n            var a = 1;\n            print a;\n            var a = 2;\n            print a;\n        }\n        \")"
+---
+stdout:
+1
+2
+
+
+stderr:
+
+

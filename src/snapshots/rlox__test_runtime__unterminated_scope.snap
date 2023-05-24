@@ -1,0 +1,21 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        {\n            var a = 1;\n            print a;\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:3:2]
+   │
+ 2 │         {
+   │         ┬  
+   │         ╰── This { must be terminated
+   │ 
+ 5 │ 
+   │        ┬  
+   │        ╰── Expected }
+───╯
+
+

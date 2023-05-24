@@ -3,6 +3,8 @@ use std::iter::Peekable;
 
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
+use crate::repr::interner::InternedU8;
+use crate::repr::interner::Interner;
 
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
@@ -16,12 +18,14 @@ use crate::repr::value::Value;
 use crate::common::ui;
 use crate::common::ui::*;
 
+pub type LocalSymbol = InternedU8;
 struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
     stderr: StdErr,
-    local_count: u8,
-    scope_depth: u16,
+    interned_locals: Interner,
+    defined_locals: Vec<LocalSymbol>,
+    scope_size: Vec<LocalSymbol>,
 }
 
 /// The same rules around emit_byte applies
@@ -33,6 +37,11 @@ macro_rules! emit_bytes {
 }
 
 impl Chunk {
+    unsafe fn emit_continuation_byte(&mut self, byte: impl Into<u8>) {
+        let prev = self.spans.last().copied().unwrap_or(Span::from(0..0));
+        self.write_byte(byte, prev);
+    }
+
     /// PRECONDITION: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
     unsafe fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
         self.write_byte(byte, span.into());
@@ -128,8 +137,9 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             lexer,
             source,
             stderr,
-            local_count: 0,
-            scope_depth: 0,
+            interned_locals: Interner::default(),
+            defined_locals: Default::default(),
+            scope_size: Default::default(),
         }
     }
 
@@ -194,6 +204,23 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
+    fn add_local(&mut self, name: &str) {
+        let nameid = self.interned_locals.add_or_get(name);
+        self.defined_locals.push(nameid);
+        let size = self.scope_size.last_mut().unwrap();
+        *size += 1;
+    }
+
+    fn resolve_local(&self, name: &str) -> Option<LocalSymbol> {
+        let nameid = self.interned_locals.get(name)?;
+        for (i, local) in self.defined_locals.iter().enumerate().rev() {
+            if nameid == *local {
+                return Some(i.try_into().unwrap());
+            }
+        }
+        None
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn primary(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
@@ -246,12 +273,23 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             Token::Ident => {
                 let name = &self.source[token.span];
-                let nameid = chunk.globals.add_or_get(name);
+                let follow_byte: u8;
+                let set_opcode: OpCode;
+                let get_opcode: OpCode;
+                if let Some(position) = self.resolve_local(name) {
+                    follow_byte = position;
+                    set_opcode = OpCode::SetLocal;
+                    get_opcode = OpCode::GetLocal;
+                } else {
+                    follow_byte = chunk.globals.add_or_get(name);
+                    set_opcode = OpCode::SetGlobal;
+                    get_opcode = OpCode::GetGlobal;
+                }
                 if let Some(eq) = self.pops(Token::Eq) {
                     if can_assign {
                         self.expression(chunk, can_assign)?;
                         unsafe {
-                            emit_bytes!(chunk, token.span; OpCode::SetGlobal, nameid);
+                            emit_bytes!(chunk, token.span; set_opcode, follow_byte);
                         }
                     } else {
                         self.simple_error(eq.span, "Invalid assignment at this expression depth");
@@ -259,7 +297,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                     }
                 } else {
                     unsafe {
-                        emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
+                        emit_bytes!(chunk, token.span; get_opcode, follow_byte);
                     }
                 }
             }
@@ -364,11 +402,17 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn begin_scope(&mut self) {
-        self.scope_depth += 1;
+        self.scope_size.push(0);
     }
 
-    fn end_scope(&mut self) {
-        self.scope_depth -= 1;
+    fn end_scope(&mut self, chunk: &mut Chunk) {
+        let size = self.scope_size.pop().unwrap();
+        for _ in 0..size {
+            unsafe {
+                chunk.emit_continuation_byte(OpCode::Pop);
+            }
+            self.defined_locals.pop().unwrap();
+        }
     }
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
@@ -382,7 +426,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::LBrace => {
                 self.begin_scope();
                 let block = self.block(chunk);
-                self.end_scope();
+                self.end_scope(chunk);
                 return block;
             }
             _ => OpCode::Pop,
@@ -395,13 +439,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn expect_identifier(&mut self) -> ParseResult<Spanned<&str>> {
+    fn expect_identifier(&mut self) -> ParseResult<Span> {
         let token = self.pop()?;
         if token.data == Token::Ident {
-            Ok(Spanned {
-                data: &self.source[token.span],
-                span: token.span,
-            })
+            Ok(token.span)
         } else {
             Err(ParseError::ExpectError {
                 expected: "identifier",
@@ -425,9 +466,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let var = self.pop().unwrap();
         debug_assert_eq!(var.data, Token::Var);
 
-        let name = self.expect_identifier()?;
-        let namespan = name.span;
-        let nameid = chunk.globals.add_or_get(name.data);
+        let namespan = self.expect_identifier()?;
 
         if self.pops(Token::Eq).is_some() {
             self.expression(chunk, true)?;
@@ -437,8 +476,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         self.check_semicolon(var.span)?;
 
-        unsafe {
-            emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
+        if self.scope_size.is_empty() {
+            let nameid = chunk.globals.add_or_get(&self.source[namespan]);
+            unsafe {
+                emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
+            }
+        } else {
+            self.add_local(&self.source[namespan]);
         }
         Ok(())
     }

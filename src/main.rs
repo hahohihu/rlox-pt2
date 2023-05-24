@@ -180,4 +180,111 @@ mod test_runtime {
         print s = \"s\";
         "
     }
+
+    snap! {
+        basic_scope,
+        "
+        {
+            var a = 1;
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        nested_scope,
+        "
+        {
+            var a = 1;
+            {
+                var b = 2;
+                print a;
+                print b;
+            }
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        inaccessible_scope,
+        "
+        {
+            var a = 1;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        global_and_local_scope,
+        "
+        var a = 1;
+        var b = 2;
+        {
+            print a;
+            print b;
+            var a = 3;
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        // I diverge from the book and allow this because it's fine and useful
+        // though somewhat inefficient since it takes up extra stack space
+        same_scope_shadowing, 
+        "
+        {
+            var a = 1;
+            print a;
+            var a = 2;
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        scoped_assignment,
+        "
+        var a;
+        {
+            print a;
+            a = 1;
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        multi_local_assign,
+        "
+        {
+            var a;
+            var b;
+            a = b = a = 1;
+            print a;
+            print b;
+        }
+        "
+    }
+
+    snap! {
+        invalid_declaration,
+        "
+        var a = var b;
+        "
+    }
+
+    snap! {
+        // todo: this error message could be better
+        unterminated_scope,
+        "
+        {
+            var a = 1;
+            print a;
+        "
+    }
 }

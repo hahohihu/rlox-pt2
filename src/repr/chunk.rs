@@ -24,6 +24,8 @@ pub enum OpCode {
     GetGlobal,
     DefineGlobal,
     SetGlobal,
+    GetLocal,
+    SetLocal,
     // Binary
     Add,
     Sub,
@@ -108,6 +110,12 @@ impl Chunk {
         *offset += 2;
     }
 
+    fn byte_instruction(&self, name: &str, offset: &mut usize, mut stdout: impl Write) {
+        let value = self.instructions[*offset + 1];
+        writeln!(stdout, "{name:<16} '{value}'").unwrap();
+        *offset += 2;
+    }
+
     pub fn disassemble_instruction(
         &self,
         mut offset: usize,
@@ -144,6 +152,8 @@ impl Chunk {
             OpCode::DefineGlobal => self.global_instruction("DEFINE_GLOBAL", &mut offset, stdout),
             OpCode::GetGlobal => self.global_instruction("GET_GLOBAL", &mut offset, stdout),
             OpCode::SetGlobal => self.global_instruction("SET_GLOBAL", &mut offset, stdout),
+            OpCode::SetLocal => self.byte_instruction("SET_LOCAL", &mut offset, stdout),
+            OpCode::GetLocal => self.byte_instruction("GET_LOCAL", &mut offset, stdout),
             OpCode::Invalid => {
                 writeln!(stdout, "INVALID OPCODE: {chunk}").unwrap();
                 offset += 1;

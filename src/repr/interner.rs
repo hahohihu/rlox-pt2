@@ -17,6 +17,10 @@ impl Drop for Interner {
 }
 
 impl Interner {
+    pub fn get(&self, literal: &str) -> Option<InternedU8> {
+        self.indices.get(literal).copied()
+    }
+
     pub fn add_or_get(&mut self, literal: &str) -> InternedU8 {
         // Getting an entry requires ownership, which is more expensive in the common-case of finding a duplicate string
         if let Some(i) = self.indices.get(literal) {

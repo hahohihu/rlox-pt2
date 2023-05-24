@@ -161,7 +161,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             return Ok(());
         }
         loop {
-            #[cfg(feature = "verbose_vm")]
+            // #[cfg(feature = "verbose_vm")]
             {
                 self.chunk
                     .disassemble_instruction(self.ip, self.source, std::io::stdout());
@@ -172,8 +172,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 println!("=================");
                 println!("==== GLOBALS ====");
-                for (k, v) in &self.globals {
-                    println!("{k} = {v}");
+                for (i, v) in self.globals.iter().enumerate() {
+                    if let Some(v) = v {
+                        println!("{} = {}", self.chunk.globals.get_name(i as u8), v);
+                    }
                 }
                 println!("=================");
             }
@@ -200,6 +202,14 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let index = self.next_byte();
                     let value = self.stack.last().unwrap();
                     self.set_global(index, *value)?;
+                }
+                OpCode::SetLocal => {
+                    let slot = self.next_byte();
+                    self.stack[slot as usize] = *self.stack.last().unwrap();
+                }
+                OpCode::GetLocal => {
+                    let slot = self.next_byte();
+                    self.stack.push(self.stack[slot as usize]);
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();
