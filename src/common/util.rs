@@ -6,6 +6,13 @@ macro_rules! noop {
     ($($tt:tt)*) => {};
 }
 
+#[macro_export]
+macro_rules! black_box {
+    ($expr:expr) => {
+        ::std::hint::black_box($expr);
+    };
+}
+
 pub fn setup_test() {
     static LOGGING: Once = Once::new();
     LOGGING.call_once(|| {
@@ -27,10 +34,10 @@ pub fn mock_interpret(source: &str) -> String {
 
 
 #[cfg(test)]
-#[cfg(feature = "no_snap")]
-pub use noop as assert_snapshot;
+#[cfg(not(feature = "snap"))]
+pub use black_box as assert_snapshot;
 #[cfg(test)]
-#[cfg(not(feature = "no_snap"))]
+#[cfg(feature = "snap")]
 pub use ::insta::assert_snapshot as assert_snapshot;
 
 #[cfg(test)]

@@ -13,11 +13,12 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = [ "fmt" ] }
 
 [features]
+default = ["snap"]
 verbose_vm = []
 verbose_parsing = []
 verbose_allocations = []
 instrument = []
-no_snap = []
+snap = []
 
 [dev-dependencies]
 assert_cmd = "2.0.11"
