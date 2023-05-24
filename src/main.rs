@@ -173,7 +173,7 @@ mod test_runtime {
         print s;
         "
     );
-    snap!{
+    snap! {
         print_assign,
         "
         var s;

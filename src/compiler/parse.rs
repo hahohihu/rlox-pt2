@@ -20,7 +20,6 @@ struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
     stderr: StdErr,
-    can_assign: bool,
     local_count: u8,
     scope_depth: u16,
 }
@@ -129,7 +128,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             lexer,
             source,
             stderr,
-            can_assign: true,
             local_count: 0,
             scope_depth: 0,
         }
@@ -159,18 +157,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             .unwrap();
     }
 
-    fn simple_error(
-        &mut self,
-        span: ui::Span,
-        msg: &str
-    ) {
+    fn simple_error(&mut self, span: ui::Span, msg: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
         Report::build(ReportKind::Error, (), ui::OFFSET)
-            .with_label(
-                Label::new(span)
-                    .with_color(Color::Red)
-                    .with_message(msg),
-            )
+            .with_label(Label::new(span).with_color(Color::Red).with_message(msg))
             .finish()
             .write(Source::from(self.source), &mut self.stderr)
             .unwrap();
@@ -206,21 +196,21 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn primary(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+    fn primary(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
         let token = self.pop()?;
         match token.data {
             Token::Minus => {
-                self.primary(chunk)?;
+                self.primary(chunk, can_assign)?;
                 // SAFETY: a value must be on the stack for negate to work, which primary guarantees
                 unsafe { chunk.emit_byte(OpCode::Negate, token.span) }
             }
             Token::Bang => {
-                self.primary(chunk)?;
+                self.primary(chunk, can_assign)?;
                 // SAFETY: a value must be on the stack for negate to work, which primary guarantees
                 unsafe { chunk.emit_byte(OpCode::Not, token.span) }
             }
             Token::LParen => {
-                self.expression(chunk)?;
+                self.expression(chunk, can_assign)?;
                 let next = self.pop()?;
                 if next.data != Token::RParen {
                     self.mismatched_pair(
@@ -258,8 +248,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 let name = &self.source[token.span];
                 let nameid = chunk.globals.add_or_get(name);
                 if let Some(eq) = self.pops(Token::Eq) {
-                    if self.can_assign {
-                        self.expression(chunk)?;
+                    if can_assign {
+                        self.expression(chunk, can_assign)?;
                         unsafe {
                             emit_bytes!(chunk, token.span; OpCode::SetGlobal, nameid);
                         }
@@ -285,8 +275,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn expression_bp(&mut self, chunk: &mut Chunk, min: Precedence) -> ParseResult<()> {
-        self.primary(chunk)?;
+    fn expression_bp(
+        &mut self,
+        chunk: &mut Chunk,
+        min: Precedence,
+        mut can_assign: bool,
+    ) -> ParseResult<()> {
+        self.primary(chunk, can_assign)?;
         loop {
             let operation = self.peek()?;
 
@@ -295,15 +290,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 break;
             }
 
-            let prev_can_assign = self.can_assign;
-            self.can_assign = prec <= Precedence::Assignment;
+            can_assign = prec <= Precedence::Assignment;
 
             self.pop().unwrap();
-            self.expression_bp(chunk, prec)?;
-
-            // this emulates a stack so I don't need to pass it everywhere - probably refactor if needed, it's late (:
-            // this is fundamentally broken if I ever do error recovery since the ? messes this up
-            self.can_assign = prev_can_assign; 
+            self.expression_bp(chunk, prec, can_assign)?;
 
             // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
             unsafe {
@@ -330,8 +320,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn expression(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
-        self.expression_bp(chunk, Precedence::Start)
+    fn expression(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+        self.expression_bp(chunk, Precedence::Start, can_assign)
     }
 
     fn check_semicolon(&mut self, lhs: Span) -> ParseResult<()> {
@@ -363,7 +353,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         if rbrace.data == Token::RBrace {
             Ok(())
         } else {
-            self.mismatched_pair(lbrace.span, "This { must be terminated", rbrace.span, "Expected }");
+            self.mismatched_pair(
+                lbrace.span,
+                "This { must be terminated",
+                rbrace.span,
+                "Expected }",
+            );
             Err(ParseError::Handled)
         }
     }
@@ -377,7 +372,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+    fn statement(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
         let token = self.peek()?;
         let opcode = match token.data {
             Token::Print => {
@@ -392,7 +387,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             _ => OpCode::Pop,
         };
-        self.expression(chunk)?;
+        self.expression(chunk, can_assign)?;
         self.check_semicolon(token.span)?;
         unsafe {
             chunk.emit_byte(opcode, token.span);
@@ -435,7 +430,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let nameid = chunk.globals.add_or_get(name.data);
 
         if self.pops(Token::Eq).is_some() {
-            self.expression(chunk)?;
+            self.expression(chunk, true)?;
         } else {
             chunk.emit_constant(Value::Nil, namespan);
         }
@@ -452,7 +447,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let token = self.peek()?;
         match token.data {
             Token::Var => self.var_declaration(chunk),
-            _ => self.statement(chunk),
+            _ => self.statement(chunk, true),
         }
     }
 
