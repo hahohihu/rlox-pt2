@@ -321,4 +321,26 @@ mod test_runtime {
     }
 
     snap!{invalid_expr_in_parens, "(1 1"}
+    snap!{
+        not_a_number,
+        "
+        var n = 0 / 0;
+        print n == n;
+        "
+    }
+    snap!{
+        equality_usually_reflexive,
+        r#"
+        var n = 0;
+        print n == n;
+        n = "foo";
+        print n == n;
+        var m = "foo";
+        print n == m;
+        n = true;
+        print n == n;
+        n = nil;
+        print n == n;
+        "#
+    }
 }

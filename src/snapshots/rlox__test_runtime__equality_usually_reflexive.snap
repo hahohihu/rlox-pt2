@@ -1,0 +1,15 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(r#\"\n        var n = 0;\n        print n == n;\n        n = \"foo\";\n        print n == n;\n        var m = \"foo\";\n        print n == m;\n        n = true;\n        print n == n;\n        n = nil;\n        print n == n;\n        \"#)"
+---
+stdout:
+true
+true
+true
+true
+true
+
+
+stderr:
+
+

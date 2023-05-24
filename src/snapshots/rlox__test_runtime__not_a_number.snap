@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        var n = 0 / 0;\n        print n == n;\n        \")"
+---
+stdout:
+false
+
+
+stderr:
+
+
