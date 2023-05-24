@@ -227,8 +227,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             },
             Token::String => {
                 // remove parens
-                let str = &self.source[token.span][1..];
-                let str = &str[..str.len() - 1];
+                let str = &self.source[token.span];
+                let str = &str[1..str.len() - 1];
                 chunk.emit_constant(Value::from(str), token.span);
             }
             Token::Ident => {

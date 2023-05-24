@@ -125,7 +125,8 @@ mod test_runtime {
         "
     );
     snap!(missing_global, "var bar; print foo;");
-    snap!(shadowing,
+    snap!(
+        shadowing,
         "
         var a = 1;
         var a;
