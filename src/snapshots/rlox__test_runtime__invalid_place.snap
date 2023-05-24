@@ -1,0 +1,19 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        1 = 1;\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         1 = 1;
+   │         ┬ ┬  
+   │         ╰──── This statement should be terminated with ;
+   │           │  
+   │           ╰── Expected ;
+───╯
+
+

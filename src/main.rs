@@ -356,4 +356,11 @@ mod test_runtime {
         print a;
         "
     }
+
+    snap! {
+        invalid_place,
+        "
+        1 = 1;
+        "
+    }
 }

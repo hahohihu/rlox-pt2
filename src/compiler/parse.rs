@@ -94,7 +94,6 @@ impl From<Token> for Precedence {
             Token::Plus => Self::Term,
             Token::Slash => Self::Factor,
             Token::Star => Self::Factor,
-            Token::Eq => Self::Assignment,
             Token::BangEq => Self::Equality,
             Token::EqEq => Self::Equality,
             Token::Greater => Self::Comparison,
