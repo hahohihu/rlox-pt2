@@ -1,6 +1,6 @@
 use super::alloc;
 use super::valid::ValidPtr;
-use std::{fmt::Display, ops::Add};
+use std::{fmt::Display, ops::Add, hash::{Hash, Hasher}};
 
 #[derive(Copy, Clone, Debug)]
 pub struct UnsafeString {
@@ -16,6 +16,14 @@ impl Display for UnsafeString {
 impl PartialEq for UnsafeString {
     fn eq(&self, other: &Self) -> bool {
         self.str.as_ref() == other.str.as_ref()
+    }
+}
+
+impl Eq for UnsafeString {}
+
+impl Hash for UnsafeString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.str.as_ref().hash(state)
     }
 }
 

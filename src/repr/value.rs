@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::object::Object;
+use super::{object::Object, string::UnsafeString};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
@@ -33,6 +33,13 @@ impl Value {
 
     pub fn falsey(&self) -> bool {
         matches!(self, Self::Bool(false) | Self::Nil)
+    }
+
+    pub unsafe fn assume_string(&self) -> UnsafeString {
+        match self {
+            Self::Object(obj) => obj.assume_string(),
+            _ => unreachable!("This may become UB later"),
+        }
     }
 }
 

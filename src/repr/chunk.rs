@@ -21,6 +21,7 @@ pub enum OpCode {
     Not,
     Print,
     Pop,
+    GetGlobal,
     DefineGlobal,
     // Binary
     Add,
@@ -131,6 +132,7 @@ impl Chunk {
             OpCode::Print => simple("PRINT"),
             OpCode::Pop => simple("POP"),
             OpCode::DefineGlobal => simple("DEFINE_GLOBAL"),
+            OpCode::GetGlobal => simple("GET_GLOBAL"),
             OpCode::Invalid => {
                 writeln!(stdout, "INVALID OPCODE: {chunk}").unwrap();
                 offset += 1;

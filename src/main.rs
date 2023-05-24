@@ -101,4 +101,11 @@ mod test_runtime {
         unicode,
         r#"print "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#
     );
+    snap!(
+        globals,
+        "
+        var answer = 42;
+        print answer;
+        "
+    );
 }

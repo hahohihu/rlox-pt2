@@ -1,11 +1,11 @@
-use std::{io::Write, ops::Range};
+use std::{io::Write, ops::Range, collections::HashMap};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::chunk::{Chunk, OpCode},
+    repr::{chunk::{Chunk, OpCode}, string::UnsafeString},
     repr::object::Object,
     repr::value::Value,
 };
@@ -17,8 +17,11 @@ struct VM<'src, Stderr, Stdout> {
     source: &'src str,
     stderr: Stderr,
     stdout: Stdout,
-    // SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
+    /// SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
+    /// This is used to look for inaccessible objects to free
     objects: Vec<Object>,
+    /// Keys are owned by Chunk as constants. Values will be freed via objects
+    globals: HashMap<UnsafeString, Value>,
 }
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
@@ -50,6 +53,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             objects: vec![],
             stderr,
             stdout,
+            globals: Default::default()
         }
     }
 
@@ -133,10 +137,22 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     return Ok(());
                 }
                 OpCode::Pop => {
-                    self.stack.pop().expect("ICE: bad codegen");
+                    self.stack.pop().unwrap();
                 }
                 OpCode::DefineGlobal => {
-                    todo!()
+                    let name = unsafe { self.read_constant().assume_string() };
+                    let value = self.stack.last().unwrap();
+                    self.globals.insert(name, *value);
+                    self.stack.pop().unwrap();
+                }
+                OpCode::GetGlobal => {
+                    let name = unsafe { self.read_constant().assume_string() };
+                    let Some(value) = self.globals.get(&name) else {
+                        let span = self.get_span(-2..0);
+                        self.runtime_error(span, format!("Undefined variable: {name}"));
+                        return Err(InterpretError::RuntimeError);
+                    };
+                    self.stack.push(*value);
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();

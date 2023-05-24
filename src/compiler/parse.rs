@@ -231,6 +231,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 let str = &str[..str.len() - 1];
                 chunk.emit_constant(Value::from(str), token.span);
             }
+            Token::Ident => {
+                let name = &self.source[token.span];
+                let nameid = chunk.emit_constant(Value::from(name), token.span);
+                unsafe {
+                    emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
+                }
+            }
             _ => {
                 return Err(ParseError::ExpectError {
                     expected: "primary",
@@ -248,7 +255,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         loop {
             let operation = self.peek()?;
 
-            let prec = Precedence::from(operation.data); // todo: everything left associative
+            let prec = Precedence::from(operation.data); // todo: everything's currently left associative
             if prec <= min {
                 break;
             }
@@ -364,7 +371,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         unsafe {
             emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
         }
-        todo!()
+        Ok(())
     }
 
     fn declaration(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
