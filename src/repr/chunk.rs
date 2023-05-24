@@ -2,7 +2,7 @@ use std::io::Write;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use super::value::Value;
+use super::{string::UnsafeString, value::Value};
 use crate::common::ui::Span;
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
@@ -40,8 +40,10 @@ pub struct Chunk {
     // INVARIANT: An OpCode must be followed by however many bytes are specified
     pub instructions: Vec<u8>,
     pub spans: Vec<Span>,
-    // SAFETY INVARIANT: All object values are valid, and there are no duplicate allocations
+    // Owned by this
     constants: Vec<Value>,
+    // Owned by this
+    literals: Vec<UnsafeString>,
 }
 
 impl Drop for Chunk {
@@ -52,6 +54,11 @@ impl Drop for Chunk {
                     // SAFETY: See safety invariant on constants
                     obj.free();
                 }
+            }
+        }
+        for literal in &self.literals {
+            unsafe {
+                literal.free();
             }
         }
     }
@@ -68,8 +75,29 @@ impl Chunk {
         index.try_into().expect("Too many constants")
     }
 
-    pub fn get_constant(&mut self, index: u8) -> Value {
+    pub fn get_constant(&self, index: u8) -> Value {
         self.constants[index as usize]
+    }
+
+    pub fn add_literal(&mut self, literal: &str) -> u8 {
+        // Could replace this with a hashmap but it's probably small enough not to matter
+        if let Some((i, _)) = self
+            .literals
+            .iter()
+            .enumerate()
+            .find(|(_, s)| s.as_str() == literal)
+        {
+            i as u8 // guaranteed to be correct because of expect below
+        } else {
+            let literal = UnsafeString::from(literal);
+            self.literals.push(literal);
+            let index = self.literals.len() - 1;
+            index.try_into().expect("Too many literals")
+        }
+    }
+
+    pub fn get_literal(&self, index: u8) -> UnsafeString {
+        self.literals[index as usize]
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted

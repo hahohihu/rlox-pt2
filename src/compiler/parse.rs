@@ -3,7 +3,7 @@ use std::iter::Peekable;
 
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
-use crate::repr::object::Object;
+
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
@@ -233,7 +233,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             Token::Ident => {
                 let name = &self.source[token.span];
-                let nameid = chunk.add_constant(Value::from(name));
+                let nameid = chunk.add_literal(name);
                 unsafe {
                     emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
                 }
@@ -357,8 +357,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         let name = self.expect_identifier()?;
         let namespan = name.span;
-        let name = Object::from(String::from(name.data));
-        let nameid = chunk.add_constant(Value::Object(name));
+        let nameid = chunk.add_literal(name.data);
 
         if self.pops(Token::Eq) {
             self.expression(chunk)?;

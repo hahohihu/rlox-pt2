@@ -36,7 +36,6 @@ impl From<ObjectInner> for Object {
 
 impl From<String> for Object {
     fn from(value: String) -> Self {
-        alloc::trace!("Allocating string '{value}'");
         Self::from(ObjectKind::from(value))
     }
 }

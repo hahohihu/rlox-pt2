@@ -1,3 +1,4 @@
+use super::alloc;
 use std::fmt::Display;
 
 use super::{object::Object, string::UnsafeString};
@@ -57,6 +58,7 @@ impl From<f64> for Value {
 
 impl From<&str> for Value {
     fn from(value: &str) -> Self {
+        alloc::trace!("Allocating string '{value}'");
         Self::Object(Object::from(String::from(value)))
     }
 }

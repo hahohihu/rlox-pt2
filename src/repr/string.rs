@@ -1,6 +1,10 @@
 use super::alloc;
 use super::valid::ValidPtr;
-use std::{fmt::Display, ops::Add, hash::{Hash, Hasher}};
+use std::{
+    fmt::Display,
+    hash::{Hash, Hasher},
+    ops::Add,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub struct UnsafeString {
@@ -35,6 +39,13 @@ impl From<String> for UnsafeString {
     }
 }
 
+impl From<&str> for UnsafeString {
+    fn from(value: &str) -> Self {
+        alloc::trace!("Allocating string '{value}'");
+        Self::from(String::from(value))
+    }
+}
+
 impl Add<UnsafeString> for UnsafeString {
     type Output = UnsafeString;
     fn add(self, rhs: UnsafeString) -> Self::Output {
@@ -47,5 +58,9 @@ impl Add<UnsafeString> for UnsafeString {
 impl UnsafeString {
     pub unsafe fn free(self) {
         drop(Box::from_raw(self.str.as_ptr()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.str.as_ref()
     }
 }

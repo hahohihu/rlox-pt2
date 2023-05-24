@@ -1,13 +1,16 @@
-use std::{io::Write, ops::Range, collections::HashMap};
+use std::{collections::HashMap, io::Write, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::{chunk::{Chunk, OpCode}, string::UnsafeString},
     repr::object::Object,
     repr::value::Value,
+    repr::{
+        chunk::{Chunk, OpCode},
+        string::UnsafeString,
+    },
 };
 
 struct VM<'src, Stderr, Stdout> {
@@ -53,7 +56,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             objects: vec![],
             stderr,
             stdout,
-            globals: Default::default()
+            globals: Default::default(),
         }
     }
 
@@ -83,6 +86,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn read_constant(&mut self) -> Value {
         let i = self.next_byte();
         self.chunk.get_constant(i)
+    }
+
+    fn read_literal(&mut self) -> UnsafeString {
+        let i = self.next_byte();
+        self.chunk.get_literal(i)
     }
 
     fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
@@ -145,13 +153,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.stack.pop().unwrap();
                 }
                 OpCode::DefineGlobal => {
-                    let name = unsafe { self.read_constant().assume_string() };
+                    let name = self.read_literal();
                     let value = self.stack.last().unwrap();
                     self.globals.insert(name, *value);
                     self.stack.pop().unwrap();
                 }
                 OpCode::GetGlobal => {
-                    let name = unsafe { self.read_constant().assume_string() };
+                    let name = self.read_literal();
                     let Some(value) = self.globals.get(&name) else {
                         let span = self.get_span(-2..0);
                         self.runtime_error(span, format!("Undefined variable: {name}"));
