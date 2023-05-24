@@ -1,0 +1,19 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"(1 1\")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ (1 1
+   │ ┬  ┬  
+   │ ╰───── This ( is unmatched
+   │    │  
+   │    ╰── There should be a ) here
+───╯
+
+
