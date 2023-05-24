@@ -120,7 +120,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             return Ok(());
         }
         loop {
-            // #[cfg(feature = "verbose_vm")]
+            #[cfg(feature = "verbose_vm")]
             {
                 self.chunk
                     .disassemble_instruction(self.ip, self.source, std::io::stdout());
