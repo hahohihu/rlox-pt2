@@ -1,9 +1,9 @@
 ---
-source: src/vm.rs
-expression: "crate::util::mock_interpret(r#\"print \"foo\" + \"bar\";\"#)"
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(r#\"print \"foo\" + \"bar\";\"#)"
 ---
 stdout:
-"foobar"
+foobar
 
 
 stderr:

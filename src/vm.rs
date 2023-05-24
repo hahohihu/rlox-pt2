@@ -120,7 +120,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             return Ok(());
         }
         loop {
-            #[cfg(feature = "verbose_vm")]
+            // #[cfg(feature = "verbose_vm")]
             {
                 self.chunk
                     .disassemble_instruction(self.ip, self.source, std::io::stdout());
@@ -129,7 +129,12 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 for value in &self.stack[stack_len..] {
                     println!("{value}");
                 }
-                println!("==============================");
+                println!("=================");
+                println!("==== GLOBALS ====");
+                for (k, v) in &self.globals {
+                    println!("{k} = {v}");
+                }
+                println!("=================");
             }
             let instruction: OpCode = self.next_byte().into();
             match instruction {

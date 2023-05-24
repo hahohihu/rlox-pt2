@@ -108,4 +108,18 @@ mod test_runtime {
         print answer;
         "
     );
+    snap!(global_strings,
+        r#"
+        var foo = "foo";
+        var bar = "bar";
+        print foo + bar;
+        "#
+    );
+    snap!(uninitialized_is_nil,
+        "
+        var foo;
+        print foo;
+        "
+    );
+    snap!(missing_global, "var bar; print foo;");
 }

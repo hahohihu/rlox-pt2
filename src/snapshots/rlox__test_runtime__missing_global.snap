@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"var bar; print foo;\")"
+---
+stdout:
+
+
+stderr:
+Error: Undefined variable: foo
+   ╭─[<unknown>:1:13]
+   │
+ 1 │ var bar; print foo;
+   │                ───  
+   │                      
+───╯
+
+

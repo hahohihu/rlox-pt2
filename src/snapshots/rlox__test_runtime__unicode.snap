@@ -1,9 +1,9 @@
 ---
-source: src/vm.rs
-expression: "crate::util::mock_interpret(r#\"print \"💩\" + \"👪\" + \"༕\" + \"갍\" + \"⑯\" + \"ฒ\" + \"ڦ\";\"#)"
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(r#\"print \"💩\" + \"👪\" + \"༕\" + \"갍\" + \"⑯\" + \"ฒ\" + \"ڦ\";\"#)"
 ---
 stdout:
-"💩👪༕갍⑯ฒڦ"
+💩👪༕갍⑯ฒڦ
 
 
 stderr:
