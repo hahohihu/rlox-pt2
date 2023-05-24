@@ -20,6 +20,7 @@ struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
     stderr: StdErr,
+    can_assign: bool,
 }
 
 /// The same rules around emit_byte applies
@@ -126,6 +127,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             lexer,
             source,
             stderr,
+            can_assign: true
         }
     }
 
@@ -147,6 +149,23 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 Label::new(right)
                     .with_color(Color::Red)
                     .with_message(right_msg),
+            )
+            .finish()
+            .write(Source::from(self.source), &mut self.stderr)
+            .unwrap();
+    }
+
+    fn simple_error(
+        &mut self,
+        span: ui::Span,
+        msg: &str
+    ) {
+        use ariadne::{Color, Label, Report, ReportKind, Source};
+        Report::build(ReportKind::Error, (), ui::OFFSET)
+            .with_label(
+                Label::new(span)
+                    .with_color(Color::Red)
+                    .with_message(msg),
             )
             .finish()
             .write(Source::from(self.source), &mut self.stderr)
@@ -234,8 +253,20 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Ident => {
                 let name = &self.source[token.span];
                 let nameid = chunk.globals.add_or_get(name);
-                unsafe {
-                    emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
+                if let Some(eq) = self.pops(Token::Eq) {
+                    if self.can_assign {
+                        self.expression(chunk)?;
+                        unsafe {
+                            emit_bytes!(chunk, token.span; OpCode::SetGlobal, nameid);
+                        }
+                    } else {
+                        self.simple_error(eq.span, "Invalid assignment at this expression depth");
+                        return Err(ParseError::Handled);
+                    }
+                } else {
+                    unsafe {
+                        emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
+                    }
                 }
             }
             _ => {
@@ -260,8 +291,15 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 break;
             }
 
+            let prev_can_assign = self.can_assign;
+            self.can_assign = prec <= Precedence::Assignment;
+
             self.pop().unwrap();
             self.expression_bp(chunk, prec)?;
+
+            // this emulates a stack so I don't need to pass it everywhere - probably refactor if needed, it's late (:
+            // this is fundamentally broken if I ever do error recovery since the ? messes this up
+            self.can_assign = prev_can_assign; 
 
             // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
             unsafe {
@@ -339,15 +377,14 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn pops(&mut self, maybe: Token) -> bool {
+    fn pops(&mut self, maybe: Token) -> Option<Spanned<Token>> {
         let Ok(token) = self.peek() else {
-            return false;
+            return None;
         };
         if token.data == maybe {
-            self.pop().unwrap();
-            true
+            Some(self.pop().unwrap())
         } else {
-            false
+            None
         }
     }
 
@@ -359,7 +396,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let namespan = name.span;
         let nameid = chunk.globals.add_or_get(name.data);
 
-        if self.pops(Token::Eq) {
+        if self.pops(Token::Eq).is_some() {
             self.expression(chunk)?;
         } else {
             chunk.emit_constant(Value::Nil, namespan);
@@ -407,20 +444,19 @@ pub fn compile(source: &str, output: impl Write) -> ParseResult<Chunk> {
 #[cfg(test)]
 mod tests {
     use std::io::stderr;
-    fn snap_bytecode(source: &str) {
+    fn snap_bytecode(source: &str) -> String {
         crate::common::util::setup_test();
         let chunk = super::compile(source, stderr()).unwrap();
         let mut out = vec![];
         chunk.disassemble("test", source, &mut out);
-        let res = String::from_utf8(out).unwrap();
-        insta::assert_snapshot!(res);
+        String::from_utf8(out).unwrap()
     }
 
     macro_rules! bytecode {
         ($name:ident, $input:literal) => {
             #[test]
             fn $name() {
-                snap_bytecode($input);
+                insta::assert_snapshot!(snap_bytecode($input));
             }
         };
     }

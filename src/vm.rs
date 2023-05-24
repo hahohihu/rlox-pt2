@@ -111,16 +111,49 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             .with_message(message)
             .with_label(Label::new(span).with_color(Color::Red))
             .finish()
+            // this mutable borrow infects everything it touches, hence &mut self
+            // it isn't currently presenting an issue, but perhaps DI was a mistake
             .write(Source::from(self.source), &mut self.stderr)
             .unwrap();
     }
 
-    fn set_global(&mut self, index: u8, value: Value) {
+    fn define_global(&mut self, index: u8, value: Value) {
         let index = index as usize;
         while self.globals.len() <= index {
             self.globals.push(None);
         }
         self.globals[index] = Some(value);
+    }
+
+    fn get_global(&mut self, index: u8) -> Result<Value, InterpretError> {
+        match self.globals.get(index as usize) {
+            Some(Some(value)) => Ok(*value),
+            _ => {
+                let span = self.get_span(-2..0);
+                self.runtime_error(
+                    span,
+                    format!("Undefined variable: {}", self.chunk.globals.get_name(index)),
+                );
+                Err(InterpretError::RuntimeError)
+            }
+        }
+    }
+
+    fn set_global(&mut self, index: u8, value: Value) -> InterpretResult {
+        match self.globals.get_mut(index as usize) {
+            Some(v) if v.is_some() => {
+                *v = Some(value);
+                Ok(())
+            }
+            _ => {
+                let span = self.get_span(-2..0);
+                self.runtime_error(
+                    span,
+                    format!("Undefined variable: {}", self.chunk.globals.get_name(index)),
+                );
+                Err(InterpretError::RuntimeError)
+            }
+        }
     }
 
     fn run(&mut self) -> InterpretResult {
@@ -155,17 +188,18 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::DefineGlobal => {
                     let index = self.next_byte();
                     let value = self.stack.last().unwrap();
-                    self.set_global(index, *value);
+                    self.define_global(index, *value);
                     self.stack.pop().unwrap();
                 }
                 OpCode::GetGlobal => {
                     let index = self.next_byte();
-                    let Some(Some(value)) = self.globals.get(index as usize) else {
-                        let span = self.get_span(-2..0);
-                        self.runtime_error(span, format!("Undefined variable: {}", self.chunk.globals.get_name(index)));
-                        return Err(InterpretError::RuntimeError);
-                    };
-                    self.stack.push(*value);
+                    let value = self.get_global(index)?;
+                    self.stack.push(value);
+                }
+                OpCode::SetGlobal => {
+                    let index = self.next_byte();
+                    let value = self.stack.last().unwrap();
+                    self.set_global(index, *value)?;
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();

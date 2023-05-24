@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        a * b = c + d;\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         a * b = c + d;
+   │               ┬  
+   │               ╰── Invalid assignment at this expression depth
+───╯
+
+

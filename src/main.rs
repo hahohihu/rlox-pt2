@@ -134,4 +134,50 @@ mod test_runtime {
         "
     );
     snap!(declaration_is_not_expression, "var a == 1;");
+
+    snap!(
+        assignment,
+        "
+        var a = 0;
+        a = \"a\";
+        print a;
+        "
+    );
+    snap!(
+        invalid_lvalue,
+        "
+        a * b = c + d;
+        "
+    );
+    snap!(
+        nested_assign,
+        "
+        var a;
+        var b = a = 1;
+        print a;
+        print b;
+        "
+    );
+    snap!(
+        assign_parens,
+        "
+        var a;
+        print 1 * (a = 2);  
+        "
+    );
+    snap!(
+        assign_a_string,
+        "
+        var s = \"foo\";
+        s = s + \"bar\";
+        print s;
+        "
+    );
+    snap!{
+        print_assign,
+        "
+        var s;
+        print s = \"s\";
+        "
+    }
 }
