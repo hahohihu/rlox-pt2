@@ -24,6 +24,10 @@ impl<T: ?Sized> ValidPtr<T> {
     pub fn as_ptr(&self) -> *mut T {
         self.0.as_ptr()
     }
+
+    pub unsafe fn free(self) {
+        drop(Box::from_raw(self.0.as_ptr()))
+    }
 }
 
 impl<T: ?Sized> From<Box<T>> for ValidPtr<T> {

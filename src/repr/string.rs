@@ -59,7 +59,7 @@ impl Add<UnsafeString> for UnsafeString {
 
 impl UnsafeString {
     pub unsafe fn free(self) {
-        drop(Box::from_raw(self.str.as_ptr()))
+        self.str.free()
     }
 
     pub fn as_str(&self) -> &str {

@@ -62,7 +62,7 @@ impl Object {
     pub unsafe fn free(self) {
         alloc::trace!("Freeing {self}");
         self.inner.as_ref().kind.free();
-        drop(Box::from_raw(self.inner.as_ptr()));
+        self.inner.free();
     }
 }
 
