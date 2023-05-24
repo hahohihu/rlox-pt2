@@ -201,29 +201,31 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Ok(())
     }
 
+    fn show_debug_trace(&self) {
+        self.chunk
+            .disassemble_instruction(self.ip, self.source, std::io::stdout());
+        println!("==== STACK ====");
+        let stack_len = self.stack.len().saturating_sub(8);
+        for value in &self.stack[stack_len..] {
+            println!("{value}");
+        }
+        println!("=================");
+        println!("==== GLOBALS ====");
+        for (i, v) in self.globals.iter().enumerate() {
+            if let Some(v) = v {
+                println!("{} = {}", self.chunk.globals.get_name(i as u8), v);
+            }
+        }
+        println!("=================");
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
         loop {
             #[cfg(feature = "verbose_vm")]
-            {
-                self.chunk
-                    .disassemble_instruction(self.ip, self.source, std::io::stdout());
-                println!("==== STACK ====");
-                let stack_len = self.stack.len().saturating_sub(8);
-                for value in &self.stack[stack_len..] {
-                    println!("{value}");
-                }
-                println!("=================");
-                println!("==== GLOBALS ====");
-                for (i, v) in self.globals.iter().enumerate() {
-                    if let Some(v) = v {
-                        println!("{} = {}", self.chunk.globals.get_name(i as u8), v);
-                    }
-                }
-                println!("=================");
-            }
+            self.show_debug_trace();
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {
