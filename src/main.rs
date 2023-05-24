@@ -41,6 +41,7 @@ fn main() -> ExitCode {
     }
 }
 
+// These tests being all glommed together is a bit terrifying, but snapshot results are bound to location, so refactoring isn't worth it
 #[cfg(test)]
 mod test_errors {
     use crate::snap;
