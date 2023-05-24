@@ -72,6 +72,7 @@ mod test_runtime {
     snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
     snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap!(unary, "print -1 - -2 == --1 == true;");
+    snap!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
 
     snap!(
         falsey,
@@ -124,4 +125,12 @@ mod test_runtime {
         "
     );
     snap!(missing_global, "var bar; print foo;");
+    snap!(shadowing,
+        "
+        var a = 1;
+        var a;
+        print a;
+        "
+    );
+    snap!(declaration_is_not_expression, "var a == 1;");
 }

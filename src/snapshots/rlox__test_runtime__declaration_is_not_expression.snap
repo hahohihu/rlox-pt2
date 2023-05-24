@@ -1,0 +1,19 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"var a == 1;\")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ var a == 1;
+   │ ─┬─   ─┬  
+   │  ╰──────── This should be terminated with ;
+   │        │  
+   │        ╰── There should be a ; here
+───╯
+
+
