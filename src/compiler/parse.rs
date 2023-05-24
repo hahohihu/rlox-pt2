@@ -278,6 +278,38 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         None
     }
 
+    fn variable_access_or_assignment(&mut self, chunk: &mut Chunk, ident_span: Span, can_assign: bool) -> ParseResult<()> {
+        let name = &self.source[ident_span];
+        let follow_byte: u8;
+        let set_opcode: OpCode;
+        let get_opcode: OpCode;
+        if let Some(position) = self.resolve_local(name) {
+            follow_byte = position;
+            set_opcode = OpCode::SetLocal;
+            get_opcode = OpCode::GetLocal;
+        } else {
+            follow_byte = chunk.globals.add_or_get(name);
+            set_opcode = OpCode::SetGlobal;
+            get_opcode = OpCode::GetGlobal;
+        }
+        if let Some(eq) = self.matches(Token::Eq) {
+            if can_assign {
+                self.expression(chunk, can_assign)?;
+                unsafe {
+                    emit_bytes!(chunk, ident_span; set_opcode, follow_byte);
+                }
+            } else {
+                self.simple_error(eq.span, "Invalid assignment at this expression depth");
+                return Err(ParseError::Handled);
+            }
+        } else {
+            unsafe {
+                emit_bytes!(chunk, ident_span; get_opcode, follow_byte);
+            }
+        }
+        Ok(())
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn primary(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
@@ -329,34 +361,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 chunk.emit_constant(Value::from(str), token.span);
             }
             Token::Ident => {
-                let name = &self.source[token.span];
-                let follow_byte: u8;
-                let set_opcode: OpCode;
-                let get_opcode: OpCode;
-                if let Some(position) = self.resolve_local(name) {
-                    follow_byte = position;
-                    set_opcode = OpCode::SetLocal;
-                    get_opcode = OpCode::GetLocal;
-                } else {
-                    follow_byte = chunk.globals.add_or_get(name);
-                    set_opcode = OpCode::SetGlobal;
-                    get_opcode = OpCode::GetGlobal;
-                }
-                if let Some(eq) = self.matches(Token::Eq) {
-                    if can_assign {
-                        self.expression(chunk, can_assign)?;
-                        unsafe {
-                            emit_bytes!(chunk, token.span; set_opcode, follow_byte);
-                        }
-                    } else {
-                        self.simple_error(eq.span, "Invalid assignment at this expression depth");
-                        return Err(ParseError::Handled);
-                    }
-                } else {
-                    unsafe {
-                        emit_bytes!(chunk, token.span; get_opcode, follow_byte);
-                    }
-                }
+                self.variable_access_or_assignment(chunk, token.span, can_assign)?;
             }
             _ => {
                 return Err(ParseError::ExpectError {
