@@ -1,0 +1,20 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        var a\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         var a
+   │         ─┬─  
+   │          ╰─── This statement should be terminated with ;
+ 3 │ 
+   │        ┬  
+   │        ╰── Expected ;
+───╯
+
+

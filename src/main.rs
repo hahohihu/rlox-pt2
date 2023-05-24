@@ -73,6 +73,7 @@ mod test_runtime {
     snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap!(unary, "print -1 - -2 == --1 == true;");
     snap!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
+    snap!{precedence, "print 1 * 2 == 4 / 2;"}
 
     snap!(
         falsey,
@@ -308,6 +309,13 @@ mod test_runtime {
         set_undeclared_global,
         "
         a = 1;
+        "
+    }
+
+    snap! {
+        eof_after_variable,
+        "
+        var a
         "
     }
 }
