@@ -169,6 +169,20 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             .unwrap();
     }
 
+    fn check_semicolon(&mut self, lhs: Span) -> ParseResult<()> {
+        let next = self.pop()?;
+        if next.data != Token::Semicolon {
+            self.mismatched_pair(
+                lhs,
+                "This statement should be terminated with ;",
+                next.span,
+                "Expected ;",
+            );
+            return Err(ParseError::Handled);
+        }
+        Ok(())
+    }
+
     fn simple_error(&mut self, span: ui::Span, msg: &str) {
         use ariadne::{Color, Label, Report, ReportKind, Source};
         Report::build(ReportKind::Error, (), ui::OFFSET)
@@ -203,6 +217,47 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Some(Ok(t)) => Ok(*t),
             Some(Err(t)) => Err(ParseError::InvalidToken(*t)),
             None => Ok(self.eof()),
+        }
+    }
+
+    fn matches(&mut self, maybe: Token) -> Option<Spanned<Token>> {
+        let Ok(token) = self.peek() else {
+            return None;
+        };
+        if token.data == maybe {
+            Some(self.pop().unwrap())
+        } else {
+            None
+        }
+    }
+
+    fn expect_identifier(&mut self) -> ParseResult<Span> {
+        let token = self.pop()?;
+        if token.data == Token::Ident {
+            Ok(token.span)
+        } else {
+            Err(ParseError::ExpectError {
+                expected: "identifier",
+                got: token.span,
+            })
+        }
+    }
+
+    fn in_global_scope(&self) -> bool {
+        self.scope_size.is_empty()
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_size.push(0);
+    }
+
+    fn end_scope(&mut self, chunk: &mut Chunk) {
+        let size = self.scope_size.pop().unwrap();
+        for _ in 0..size {
+            unsafe {
+                chunk.emit_byte(OpCode::Pop, 0..0);
+            }
+            self.defined_locals.pop().unwrap();
         }
     }
 
@@ -287,7 +342,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                     set_opcode = OpCode::SetGlobal;
                     get_opcode = OpCode::GetGlobal;
                 }
-                if let Some(eq) = self.pops(Token::Eq) {
+                if let Some(eq) = self.matches(Token::Eq) {
                     if can_assign {
                         self.expression(chunk, can_assign)?;
                         unsafe {
@@ -364,20 +419,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression_bp(chunk, Precedence::Start, can_assign)
     }
 
-    fn check_semicolon(&mut self, lhs: Span) -> ParseResult<()> {
-        let next = self.pop()?;
-        if next.data != Token::Semicolon {
-            self.mismatched_pair(
-                lhs,
-                "This statement should be terminated with ;",
-                next.span,
-                "Expected ;",
-            );
-            return Err(ParseError::Handled);
-        }
-        Ok(())
-    }
-
     fn block(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let lbrace = self.pop().unwrap();
         debug_assert_eq!(lbrace.data, Token::LBrace);
@@ -403,20 +444,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn begin_scope(&mut self) {
-        self.scope_size.push(0);
-    }
-
-    fn end_scope(&mut self, chunk: &mut Chunk) {
-        let size = self.scope_size.pop().unwrap();
-        for _ in 0..size {
-            unsafe {
-                chunk.emit_byte(OpCode::Pop, 0..0);
-            }
-            self.defined_locals.pop().unwrap();
-        }
-    }
-
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn statement(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
         let token = self.peek()?;
@@ -424,12 +451,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Print => {
                 self.pop().unwrap();
                 OpCode::Print
-            }
-            Token::LBrace => {
-                self.begin_scope();
-                let block = self.block(chunk);
-                self.end_scope(chunk);
-                return block;
             }
             _ => OpCode::Pop,
         };
@@ -441,36 +462,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn expect_identifier(&mut self) -> ParseResult<Span> {
-        let token = self.pop()?;
-        if token.data == Token::Ident {
-            Ok(token.span)
-        } else {
-            Err(ParseError::ExpectError {
-                expected: "identifier",
-                got: token.span,
-            })
-        }
-    }
-
-    fn pops(&mut self, maybe: Token) -> Option<Spanned<Token>> {
-        let Ok(token) = self.peek() else {
-            return None;
-        };
-        if token.data == maybe {
-            Some(self.pop().unwrap())
-        } else {
-            None
-        }
-    }
-
     fn var_declaration(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let var = self.pop().unwrap();
         debug_assert_eq!(var.data, Token::Var);
 
         let namespan = self.expect_identifier()?;
 
-        if self.pops(Token::Eq).is_some() {
+        if self.matches(Token::Eq).is_some() {
             self.expression(chunk, true)?;
         } else {
             chunk.emit_constant(Value::Nil, namespan);
@@ -478,7 +476,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         self.check_semicolon(var.span)?;
 
-        if self.scope_size.is_empty() {
+        if self.in_global_scope() {
             let nameid = chunk.globals.add_or_get(&self.source[namespan]);
             unsafe {
                 emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
@@ -493,6 +491,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let token = self.peek()?;
         match token.data {
             Token::Var => self.var_declaration(chunk),
+            Token::LBrace => {
+                self.begin_scope();
+                let block = self.block(chunk);
+                self.end_scope(chunk);
+                block
+            }
             _ => self.statement(chunk, true),
         }
     }
