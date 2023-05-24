@@ -287,4 +287,27 @@ mod test_runtime {
             print a;
         "
     }
+    
+    snap! {
+        global_declaration_without_identifier,
+        "
+        var 1;
+        "
+    }
+
+    snap! {
+        local_declaration_without_identifier,
+        "
+        {
+            var 1;
+        }
+        "
+    }
+
+    snap! {
+        set_undeclared_global,
+        "
+        a = 1;
+        "
+    }
 }

@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        {\n            var 1;\n        }\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Parse error
+   ╭─[<unknown>:3:2]
+   │
+ 3 │             var 1;
+   │                 ┬  
+   │                 ╰── Expected identifier
+───╯
+
+
