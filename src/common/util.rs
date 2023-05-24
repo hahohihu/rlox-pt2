@@ -25,13 +25,21 @@ pub fn mock_interpret(source: &str) -> String {
     format!("stdout:\n{stdout}\n\nstderr:\n{stderr}\n")
 }
 
+
+#[cfg(test)]
+#[cfg(feature = "miri_test")]
+pub use noop as assert_snapshot;
+#[cfg(test)]
+#[cfg(not(feature = "miri_test"))]
+pub use ::insta::assert_snapshot as assert_snapshot;
+
 #[cfg(test)]
 #[macro_export]
 macro_rules! snap {
     ($name:ident, $input:literal) => {
         #[test]
         fn $name() {
-            ::insta::assert_display_snapshot!($crate::common::util::mock_interpret($input));
+            $crate::common::util::assert_snapshot!($crate::common::util::mock_interpret($input));
         }
     };
 }

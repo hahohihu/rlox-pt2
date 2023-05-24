@@ -533,7 +533,7 @@ mod tests {
         ($name:ident, $input:literal) => {
             #[test]
             fn $name() {
-                insta::assert_snapshot!(snap_bytecode($input));
+                $crate::common::util::assert_snapshot!(snap_bytecode($input));
             }
         };
     }
