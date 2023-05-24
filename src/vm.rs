@@ -156,6 +156,51 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
+    fn negate(&mut self) -> InterpretResult {
+        let val = self.stack.pop().unwrap();
+        match val {
+            Value::Num(n) => {
+                self.stack.push(Value::Num(-n));
+            }
+            val => {
+                let span = self.get_span(-3..0);
+                self.runtime_error(
+                    span,
+                    format!("Tried to negate a {} ({val})", val.typename()),
+                );
+                return Err(InterpretError::RuntimeError);
+            }
+        }
+        Ok(())
+    }
+
+    fn add(&mut self) -> InterpretResult {
+        let b = self.stack.pop().unwrap();
+        let a = self.stack.pop().unwrap();
+        match (a, b) {
+            (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
+            (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
+                let (a, b) = unsafe { (a.assume_string(), b.assume_string()) };
+                let concatenated = Object::from(a + b);
+                self.objects.push(concatenated);
+                self.stack.push(Value::Object(concatenated));
+            }
+            (a, b) => {
+                let span = self.get_span(-2..1);
+                self.runtime_error(
+                    span,
+                    format!(
+                        "Operator '+' takes two numbers. Got a {} ({a}) and a {} ({b}).",
+                        a.typename(),
+                        b.typename()
+                    ),
+                );
+                return Err(InterpretError::RuntimeError);
+            }
+        }
+        Ok(())
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
@@ -220,22 +265,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::True => self.stack.push(Value::Bool(true)),
                 OpCode::False => self.stack.push(Value::Bool(false)),
-                OpCode::Negate => {
-                    let val = self.stack.pop().unwrap();
-                    match val {
-                        Value::Num(n) => {
-                            self.stack.push(Value::Num(-n));
-                        }
-                        val => {
-                            let span = self.get_span(-3..0);
-                            self.runtime_error(
-                                span,
-                                format!("Tried to negate a {} ({val})", val.typename()),
-                            );
-                            return Err(InterpretError::RuntimeError);
-                        }
-                    }
-                }
+                OpCode::Negate => self.negate()?,
                 OpCode::Not => {
                     let value = Value::Bool(self.stack.pop().unwrap().falsey());
                     self.stack.push(value);
@@ -244,31 +274,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let value = self.stack.pop().unwrap();
                     writeln!(self.stdout, "{value}").unwrap();
                 }
-                OpCode::Add => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    match (a, b) {
-                        (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
-                        (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
-                            let (a, b) = unsafe { (a.assume_string(), b.assume_string()) };
-                            let concatenated = Object::from(a + b);
-                            self.objects.push(concatenated);
-                            self.stack.push(Value::Object(concatenated));
-                        }
-                        (a, b) => {
-                            let span = self.get_span(-2..1);
-                            self.runtime_error(
-                                span,
-                                format!(
-                                    "Operator '+' takes two numbers. Got a {} ({a}) and a {} ({b}).",
-                                    a.typename(),
-                                    b.typename()
-                                ),
-                            );
-                            return Err(InterpretError::RuntimeError);
-                        }
-                    }
-                }
+                OpCode::Add => self.add()?,
                 OpCode::Sub => self.binary_num_op("-", |a, b| Value::Num(a - b))?,
                 OpCode::Mul => self.binary_num_op("*", |a, b| Value::Num(a * b))?,
                 OpCode::Div => self.binary_num_op("/", |a, b| Value::Num(a / b))?,
