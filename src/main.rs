@@ -89,6 +89,7 @@ mod test_runtime {
     snap!(less_than, "print 1 < 1; print 0 < 1; print 2 < 1;");
     snap!(less_equal, "print 1 <= 1; print 0 <= 1; print 2 <= 1;");
     snap!(equality, "print 1 == 1; print 0 == 1; print 2 == 1;");
+    snap!(inequality, "print 1 != 1; print 0 != 1;");
     snap!(greater_than, "print 1 > 1; print 0 > 1; print 2 > 1;");
     snap!(greater_equal, "print 1 >= 1; print 0 >= 1; print 2 >= 1;");
 
@@ -318,4 +319,6 @@ mod test_runtime {
         var a
         "
     }
+
+    snap!{invalid_expr_in_parens, "(1 1"}
 }

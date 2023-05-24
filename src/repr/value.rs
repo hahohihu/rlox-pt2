@@ -35,13 +35,6 @@ impl Value {
     pub fn falsey(&self) -> bool {
         matches!(self, Self::Bool(false) | Self::Nil)
     }
-
-    pub unsafe fn assume_string(&self) -> UnsafeString {
-        match self {
-            Self::Object(obj) => obj.assume_string(),
-            _ => unreachable!("This may become UB later"),
-        }
-    }
 }
 
 impl From<bool> for Value {
