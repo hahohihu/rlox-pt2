@@ -1,7 +1,7 @@
 use super::alloc;
 use std::fmt::Display;
 
-use super::{object::Object, string::UnsafeString};
+use super::object::Object;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {

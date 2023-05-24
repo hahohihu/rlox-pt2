@@ -411,7 +411,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
             unsafe {
-                chunk.emit_continuation_byte(OpCode::Pop);
+                chunk.emit_byte(OpCode::Pop, 0..0);
             }
             self.defined_locals.pop().unwrap();
         }

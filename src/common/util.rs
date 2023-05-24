@@ -32,13 +32,12 @@ pub fn mock_interpret(source: &str) -> String {
     format!("stdout:\n{stdout}\n\nstderr:\n{stderr}\n")
 }
 
-
+#[cfg(test)]
+#[cfg(feature = "snap")]
+pub use ::insta::assert_snapshot;
 #[cfg(test)]
 #[cfg(not(feature = "snap"))]
 pub use black_box as assert_snapshot;
-#[cfg(test)]
-#[cfg(feature = "snap")]
-pub use ::insta::assert_snapshot as assert_snapshot;
 
 #[cfg(test)]
 #[macro_export]

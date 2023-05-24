@@ -74,7 +74,7 @@ mod test_runtime {
     snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap!(unary, "print -1 - -2 == --1 == true;");
     snap!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
-    snap!{precedence, "print 1 * 2 == 4 / 2;"}
+    snap! {precedence, "print 1 * 2 == 4 / 2;"}
 
     snap!(
         falsey,
@@ -237,7 +237,7 @@ mod test_runtime {
     snap! {
         // I diverge from the book and allow this because it's fine and useful
         // though somewhat inefficient since it takes up extra stack space
-        same_scope_shadowing, 
+        same_scope_shadowing,
         "
         {
             var a = 1;
@@ -290,7 +290,7 @@ mod test_runtime {
             print a;
         "
     }
-    
+
     snap! {
         global_declaration_without_identifier,
         "
@@ -321,15 +321,15 @@ mod test_runtime {
         "
     }
 
-    snap!{invalid_expr_in_parens, "(1 1"}
-    snap!{
+    snap! {invalid_expr_in_parens, "(1 1"}
+    snap! {
         not_a_number,
         "
         var n = 0 / 0;
         print n == n;
         "
     }
-    snap!{
+    snap! {
         equality_usually_reflexive,
         r#"
         var n = 0;
@@ -345,7 +345,7 @@ mod test_runtime {
         "#
     }
 
-    snap!{
+    snap! {
         shadow_and_reuse,
         "
         var a = 0;

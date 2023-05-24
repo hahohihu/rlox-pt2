@@ -268,7 +268,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                             return Err(InterpretError::RuntimeError);
                         }
                     }
-                },
+                }
                 OpCode::Sub => self.binary_num_op("-", |a, b| Value::Num(a - b))?,
                 OpCode::Mul => self.binary_num_op("*", |a, b| Value::Num(a * b))?,
                 OpCode::Div => self.binary_num_op("/", |a, b| Value::Num(a / b))?,
