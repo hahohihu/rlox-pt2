@@ -233,7 +233,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
             Token::Ident => {
                 let name = &self.source[token.span];
-                let nameid = chunk.add_global(name);
+                let nameid = chunk.globals.add_or_get(name);
                 unsafe {
                     emit_bytes!(chunk, token.span; OpCode::GetGlobal, nameid);
                 }
@@ -357,7 +357,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         let name = self.expect_identifier()?;
         let namespan = name.span;
-        let nameid = chunk.add_global(name.data);
+        let nameid = chunk.globals.add_or_get(name.data);
 
         if self.pops(Token::Eq) {
             self.expression(chunk)?;

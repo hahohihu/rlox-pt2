@@ -162,7 +162,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let index = self.next_byte();
                     let Some(Some(value)) = self.globals.get(index as usize) else {
                         let span = self.get_span(-2..0);
-                        self.runtime_error(span, format!("Undefined variable: {}", self.chunk.get_global(index)));
+                        self.runtime_error(span, format!("Undefined variable: {}", self.chunk.globals.get_name(index)));
                         return Err(InterpretError::RuntimeError);
                     };
                     self.stack.push(*value);

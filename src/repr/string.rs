@@ -1,6 +1,7 @@
 use super::alloc;
 use super::valid::ValidPtr;
 use std::{
+    borrow::Borrow,
     fmt::Display,
     hash::{Hash, Hasher},
     ops::Add,
@@ -63,5 +64,11 @@ impl UnsafeString {
 
     pub fn as_str(&self) -> &str {
         self.str.as_ref()
+    }
+}
+
+impl Borrow<str> for UnsafeString {
+    fn borrow(&self) -> &str {
+        self.as_str()
     }
 }

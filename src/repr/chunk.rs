@@ -2,7 +2,7 @@ use std::io::Write;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use super::{string::UnsafeString, value::Value};
+use super::{interner::Interner, value::Value};
 use crate::common::ui::Span;
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
@@ -43,7 +43,7 @@ pub struct Chunk {
     // Owned by this
     constants: Vec<Value>,
     // Owned by this
-    global_names: Vec<UnsafeString>,
+    pub globals: Interner,
 }
 
 impl Drop for Chunk {
@@ -54,11 +54,6 @@ impl Drop for Chunk {
                     // SAFETY: See safety invariant on constants
                     obj.free();
                 }
-            }
-        }
-        for literal in &self.global_names {
-            unsafe {
-                literal.free();
             }
         }
     }
@@ -77,27 +72,6 @@ impl Chunk {
 
     pub fn get_constant(&self, index: u8) -> Value {
         self.constants[index as usize]
-    }
-
-    pub fn add_global(&mut self, literal: &str) -> u8 {
-        // Could replace this with a hashmap but it's probably small enough not to matter (for now TM)
-        if let Some((i, _)) = self
-            .global_names
-            .iter()
-            .enumerate()
-            .find(|(_, s)| s.as_str() == literal)
-        {
-            i as u8 // guaranteed to be correct because of expect below
-        } else {
-            let literal = UnsafeString::from(literal);
-            self.global_names.push(literal);
-            let index = self.global_names.len() - 1;
-            index.try_into().expect("Too many literals")
-        }
-    }
-
-    pub fn get_global(&self, index: u8) -> UnsafeString {
-        self.global_names[index as usize]
     }
 
     /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
