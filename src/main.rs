@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pattern_matching)]
+#![deny(unused_must_use)]
 use std::{
     env::args,
     fs::File,
@@ -361,6 +362,98 @@ mod test_runtime {
         invalid_place,
         "
         1 = 1;
+        "
+    }
+
+    snap! {
+        basic_if,
+        r#"
+        if true {
+            print "TRUE";
+        }
+        if false {
+            print "FALSE";
+        }
+        "#
+    }
+
+    snap! {
+        nested_if,
+        "
+        if true {
+            if true {
+                if true {
+                    print 1;
+                }
+                print 2;
+            }
+            print 3;
+        }
+        print 4;
+        "
+    }
+
+    snap! {
+        if_is_scope,
+        "
+        var a;
+        if true {
+            var a = 1;
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        parens_ok,
+        "
+        if (true) {
+            print 1;
+        }
+        "
+    }
+
+    snap! {
+        brackets_mandatory,
+        "
+        if (true) print 1;
+        "
+    }
+
+    snap! {
+        if_sequence,
+        "
+        if false {
+            print 1;
+            print 2;
+            print 3;
+            print 4;
+            print 5;
+            print 6;
+        }
+        if true {
+            print 1;
+            print 2;
+        }
+        "
+    }
+
+    snap! {
+        invalid_if_cond,
+        "
+        if print a; {
+            print 1;
+        }
+        "
+    }
+
+    snap! {
+        invalid_block,
+        "
+        if true {
+            print 1
+        }
         "
     }
 }

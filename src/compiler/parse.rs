@@ -129,6 +129,16 @@ impl ParseError {
     }
 }
 
+macro_rules! scoped {
+    ($self:expr, $chunk:expr, $body:expr) => {{
+        $self.begin_scope();
+        #[allow(clippy::redundant_closure_call)]
+        let res = (|| $body)();
+        $self.end_scope($chunk);
+        res
+    }};
+}
+
 pub type ParseResult<T> = Result<T, ParseError>;
 
 impl<'src, StdErr: Write> Parser<'src, StdErr> {
@@ -429,7 +439,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     fn block(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let lbrace = self.pop().unwrap();
-        debug_assert_eq!(lbrace.data, Token::LBrace);
+        if lbrace.data != Token::LBrace {
+            return Err(ParseError::ExpectError {
+                expected: "{",
+                got: lbrace.span,
+            });
+        }
         loop {
             let token = self.peek()?;
             if let Token::RBrace | Token::Eof = token.data {
@@ -495,15 +510,37 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn if_statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let if_token = self.pop().unwrap();
+        debug_assert_eq!(if_token.data, Token::If);
+
+        // intentionally omit mandatory parens for a Rust-like syntax
+        self.expression(chunk, true)?;
+
+        unsafe {
+            emit_bytes!(chunk, if_token.span; OpCode::JumpRelIfFalse, 0xff, 0xff);
+        }
+        let addr_index = chunk.instructions.len() - 2;
+
+        scoped!(self, chunk, self.block(chunk))?;
+
+        let Ok(jump) = u16::try_from(chunk.instructions.len() - addr_index - 2) else {
+            self.simple_error(if_token.span, "The body of this if statement is too long and would generate more instructions than is supported.");
+            return Err(ParseError::Handled);
+        };
+
+        let jump = jump.to_le_bytes();
+        chunk.instructions[addr_index..][..2].copy_from_slice(&jump);
+        Ok(())
+    }
+
     fn declaration(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let token = self.peek()?;
         match token.data {
+            Token::If => self.if_statement(chunk),
             Token::Var => self.var_declaration(chunk),
             Token::LBrace => {
-                self.begin_scope();
-                let block = self.block(chunk);
-                self.end_scope(chunk);
-                block
+                scoped!(self, chunk, self.block(chunk))
             }
             _ => self.statement(chunk, true),
         }

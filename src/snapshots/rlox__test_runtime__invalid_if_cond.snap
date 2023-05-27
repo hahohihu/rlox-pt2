@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        if print a; {\n            print 1;\n        }\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Parse error
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         if print a; {
+   │            ──┬──  
+   │              ╰──── Expected primary
+───╯
+
+

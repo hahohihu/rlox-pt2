@@ -1,0 +1,20 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        if true {\n            print 1\n        }\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: 
+   ╭─[<unknown>:2:12]
+   │
+ 3 │             print 1
+   │             ──┬──  
+   │               ╰──── This statement should be terminated with ;
+ 4 │         }
+   │         ┬  
+   │         ╰── Expected ;
+───╯
+
+
