@@ -456,4 +456,59 @@ mod test_runtime {
         }
         "
     }
+
+    snap! {
+        basic_else,
+        "
+        if false {
+            print 1;
+        } else {
+            print 2;
+        }
+        "
+    }
+
+    snap! {
+        basic_then,
+        "
+        if true {
+            print 1;
+        } else {
+            print 2;
+        }
+        "
+    }
+
+    snap! {
+        assignment_in_condition,
+        "
+        var a = true;
+        if a = false {
+            print 1;
+        } else {
+            print 2;
+        }
+        "
+    }
+
+    snap! {
+        nested_if_else,
+        "
+        print 0;
+        if true {
+            if false {
+                print 1;
+            } else {
+                print 2;
+            }
+        } else {
+            if true {
+                print 3;
+            } else {
+                print 4;
+            }
+        }
+        print 5;
+        "
+    }
 }

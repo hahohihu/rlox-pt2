@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        if false {\n            print 1;\n        } else {\n            print 2;\n        }\n        \")"
+---
+stdout:
+2
+
+
+stderr:
+
+

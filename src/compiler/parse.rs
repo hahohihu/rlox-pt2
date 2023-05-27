@@ -62,6 +62,13 @@ impl Chunk {
             self.emit_byte(OpCode::Return, 0..0);
         }
     }
+
+    fn emit_jump(&mut self, jump: OpCode, span: Span) -> usize {
+        unsafe {
+            emit_bytes!(self, span; jump, 0xff, 0xff);
+        }
+        self.instructions.len() - 2
+    }
 }
 
 #[derive(Debug)]
@@ -510,27 +517,49 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn if_statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
-        let if_token = self.pop().unwrap();
-        debug_assert_eq!(if_token.data, Token::If);
+    fn scoped_block(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        self.begin_scope();
+        let res = self.block(chunk);
+        self.end_scope(chunk);
+        res
+    }
 
-        // intentionally omit mandatory parens for a Rust-like syntax
-        self.expression(chunk, true)?;
-
-        unsafe {
-            emit_bytes!(chunk, if_token.span; OpCode::JumpRelIfFalse, 0xff, 0xff);
-        }
-        let addr_index = chunk.instructions.len() - 2;
-
-        scoped!(self, chunk, self.block(chunk))?;
-
-        let Ok(jump) = u16::try_from(chunk.instructions.len() - addr_index - 2) else {
-            self.simple_error(if_token.span, "The body of this if statement is too long and would generate more instructions than is supported.");
+    fn patch_jump(&mut self, chunk: &mut Chunk, addr: usize, span: Span) -> ParseResult<()> {
+        let Ok(jump) = u16::try_from(chunk.instructions.len() - addr - 2) else {
+            self.simple_error(span, "The body of this branch is too long and would generate more instructions than is supported.");
             return Err(ParseError::Handled);
         };
 
-        let jump = jump.to_le_bytes();
-        chunk.instructions[addr_index..][..2].copy_from_slice(&jump);
+        let jump = jump.to_ne_bytes();
+        chunk.instructions[addr..][..2].copy_from_slice(&jump);
+        Ok(())
+    }
+
+    fn if_statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let if_token = self.pop().unwrap();
+        debug_assert_eq!(if_token.data, Token::If);
+        // intentionally omit mandatory parens for a Rust-like syntax
+        self.expression(chunk, true)?;
+
+        let then_jump = chunk.emit_jump(OpCode::JumpRelIfFalse, if_token.span);
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
+        self.scoped_block(chunk)?;
+        let else_jump = chunk.emit_jump(OpCode::JumpRel, Span::from(0..0));
+        self.patch_jump(chunk, then_jump, if_token.span)?;
+
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
+        let else_span = if let Some(else_token) = self.matches(Token::Else) {
+            self.scoped_block(chunk)?;
+            else_token.span
+        } else {
+            Span::from(0..0)
+        };
+        self.patch_jump(chunk, else_jump, else_span)?;
+
         Ok(())
     }
 
@@ -539,9 +568,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         match token.data {
             Token::If => self.if_statement(chunk),
             Token::Var => self.var_declaration(chunk),
-            Token::LBrace => {
-                scoped!(self, chunk, self.block(chunk))
-            }
+            Token::LBrace => self.scoped_block(chunk),
             _ => self.statement(chunk, true),
         }
     }

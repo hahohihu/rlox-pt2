@@ -17,6 +17,7 @@ pub enum OpCode {
     Constant, // 1: a constant index
     // 2 follow bytes ====
     JumpRelIfFalse,
+    JumpRel,
     // No follow bytes but data-dependent
     // Unary
     Negate,
@@ -120,7 +121,7 @@ impl Chunk {
 
     fn jmp_instruction(&self, name: &str, offset: &mut usize, mut stdout: impl Write) {
         let value = &self.instructions[*offset + 1..][..2];
-        let addr = u16::from_le_bytes([value[0], value[1]]);
+        let addr: u16 = bytemuck::pod_read_unaligned(value);
         writeln!(stdout, "{name:<16} {addr}").unwrap();
         *offset += 3;
     }
@@ -164,6 +165,7 @@ impl Chunk {
             OpCode::SetLocal => self.byte_instruction("SET_LOCAL", &mut offset, stdout),
             OpCode::GetLocal => self.byte_instruction("GET_LOCAL", &mut offset, stdout),
             OpCode::JumpRelIfFalse => self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout),
+            OpCode::JumpRel => self.jmp_instruction("JUMP_REL", &mut offset, stdout),
             OpCode::Invalid => {
                 writeln!(stdout, "INVALID OPCODE: {chunk}").unwrap();
                 offset += 1;

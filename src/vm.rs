@@ -1,7 +1,7 @@
 use std::{io::Write, ops::Range, mem::size_of};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use bytemuck::{Pod, AnyBitPattern, try_pod_read_unaligned};
+use bytemuck::{Pod, AnyBitPattern, try_pod_read_unaligned, pod_read_unaligned};
 
 use crate::{
     common::ui::{self, Span},
@@ -206,7 +206,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let size = size_of::<T>();
         let bytes = &self.chunk.instructions[self.ip..][..size];
         self.ip += size;
-        try_pod_read_unaligned(bytes).unwrap()
+        pod_read_unaligned(bytes)
     }
 
     fn show_debug_trace(&self) {
@@ -247,6 +247,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     if self.stack.last().unwrap().falsey() {
                         self.ip += offset as usize;
                     }
+                }
+                OpCode::JumpRel => {
+                    let offset = self.read::<u16>();
+                    self.ip += offset as usize;
                 }
                 OpCode::DefineGlobal => {
                     let index = self.next_byte();
