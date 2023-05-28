@@ -443,6 +443,20 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn for_loop(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let for_token = self.pop().unwrap();
+        debug_assert_eq!(for_token.data, Token::For);
+
+        let peeked = self.peek()?;
+        match peeked.data {
+            Token::Semicolon => {}
+            Token::Var => self.var_declaration(chunk)?,
+            _ => self.expression_statement(chunk)?,
+        }
+
+        Ok(())
+    }
+
     fn binary_op(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
         // ought to be a binary expression
         let operation = self.pop().unwrap();
@@ -534,18 +548,21 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn statement(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
-        let token = self.peek()?;
-        let opcode = match token.data {
-            Token::Print => {
-                self.pop().unwrap();
-                OpCode::Print
-            }
-            _ => OpCode::Pop,
-        };
-        self.expression(chunk, can_assign)?;
-        self.check_semicolon(token.span)?;
-        chunk.emit_byte(opcode, token.span);
+    fn print_statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let print_token = self.pop()?;
+        debug_assert_eq!(print_token.data, Token::Print);
+        self.expression(chunk, false)?;
+        self.check_semicolon(print_token.span)?;
+        chunk.emit_byte(OpCode::Print, print_token.span);
+        Ok(())
+    }
+
+    fn expression_statement(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let expr_span = self.peek();
+        self.expression(chunk, true)?;
+        let expr_span = expr_span.unwrap().span;
+        self.check_semicolon(expr_span)?;
+        chunk.emit_impl_byte(OpCode::Pop);
         Ok(())
     }
 
@@ -619,8 +636,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::If => self.if_statement(chunk),
             Token::Var => self.var_declaration(chunk),
             Token::While => self.while_loop(chunk),
+            Token::For => self.for_loop(chunk),
             Token::LBrace => self.scoped_block(chunk),
-            _ => self.statement(chunk, true),
+            Token::Print => self.print_statement(chunk),
+            _ => self.expression_statement(chunk),
         }
     }
 

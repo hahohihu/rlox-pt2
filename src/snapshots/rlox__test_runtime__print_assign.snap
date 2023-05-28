@@ -3,9 +3,15 @@ source: src/main.rs
 expression: "crate::common::util::mock_interpret(\"\n        var s;\n        print s = \\\"s\\\";\n        \")"
 ---
 stdout:
-s
 
 
 stderr:
+Error: 
+   ╭─[<unknown>:2:12]
+   │
+ 3 │         print s = "s";
+   │                 ┬  
+   │                 ╰── Invalid assignment at this expression depth
+───╯
 
 
