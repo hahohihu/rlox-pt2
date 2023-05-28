@@ -563,4 +563,32 @@ mod test_runtime {
         }
         "
     }
+
+    snap! {
+        basic_while_loop,
+        "
+        var a = 0;
+        while a < 10 {
+            a = a + 1;
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        nested_while_loops,
+        "
+        var a = 0;
+        while a < 3 {
+            var b = 3;
+            while b > 0 {
+                print b;
+                b = b - 1;
+            }
+            print a;
+            a = a + 1;
+        }
+        "
+    }
 }

@@ -395,7 +395,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
-    fn and_expr(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+    fn and_expr(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let and = self.pop()?;
         debug_assert_eq!(and.data, Token::And);
 
@@ -404,13 +404,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             chunk.emit_continuation_byte(OpCode::Pop);
         }
 
-        self.expression_bp(chunk, Precedence::from(and.data), can_assign)?;
+        self.expression_bp(chunk, Precedence::from(and.data), false)?;
         self.patch_jump(chunk, end, and.span)?;
 
         Ok(())
     }
 
-    fn or_expr(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+    fn or_expr(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
         let or = self.pop()?;
         debug_assert_eq!(or.data, Token::Or);
 
@@ -419,9 +419,43 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             chunk.emit_continuation_byte(OpCode::Pop);
         }
 
-        self.expression_bp(chunk, Precedence::from(or.data), can_assign)?;
+        self.expression_bp(chunk, Precedence::from(or.data), false)?;
         self.patch_jump(chunk, end, or.span)?;
 
+        Ok(())
+    }
+
+    fn while_loop(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
+        let while_token = self.pop().unwrap();
+        debug_assert_eq!(while_token.data, Token::While);
+
+        let start = chunk.instructions.len();
+        self.expression(chunk, false)?;
+
+        let exit = chunk.emit_jump(OpCode::JumpRelIfFalse, while_token.span);
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
+
+        self.scoped_block(chunk)?;
+
+        unsafe {
+            chunk.emit_byte(OpCode::Loop, while_token.span);
+        }
+        let offset = chunk.instructions.len() - start + 2;
+        let Ok(offset) = u16::try_from(offset) else {
+            self.simple_error(while_token.span, "This loop would have a longer body than is supported");
+            return Err(ParseError::Handled);
+        };
+        let offset = offset.to_ne_bytes();
+        unsafe {
+            emit_bytes!(chunk, while_token.span; offset[0], offset[1]);
+        }
+
+        self.patch_jump(chunk, exit, while_token.span)?;
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
         Ok(())
     }
 
@@ -475,8 +509,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             can_assign = prec <= Precedence::Assignment;
             
             match operation.data {
-                Token::And => self.and_expr(chunk, can_assign),
-                Token::Or => self.or_expr(chunk, can_assign),
+                Token::And => self.and_expr(chunk),
+                Token::Or => self.or_expr(chunk),
                 _ => self.binary_op(chunk, can_assign)
             }?
 
@@ -573,9 +607,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             self.simple_error(span, "The body of this branch is too long and would generate more instructions than is supported.");
             return Err(ParseError::Handled);
         };
-
-        let jump = jump.to_ne_bytes();
-        chunk.instructions[addr..][..2].copy_from_slice(&jump);
+        let offset = jump.to_ne_bytes();
+        chunk.instructions[addr..][..2].copy_from_slice(&offset);
         Ok(())
     }
 
@@ -612,6 +645,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         match token.data {
             Token::If => self.if_statement(chunk),
             Token::Var => self.var_declaration(chunk),
+            Token::While => self.while_loop(chunk),
             Token::LBrace => self.scoped_block(chunk),
             _ => self.statement(chunk, true),
         }

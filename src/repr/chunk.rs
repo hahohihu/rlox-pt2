@@ -19,6 +19,7 @@ pub enum OpCode {
     JumpRelIfFalse,
     JumpRelIfTrue,
     JumpRel,
+    Loop,
     // No follow bytes but data-dependent
     // Unary
     Negate,
@@ -168,6 +169,7 @@ impl Chunk {
             OpCode::JumpRelIfFalse => self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout),
             OpCode::JumpRelIfTrue => self.jmp_instruction("JUMP_REL_IF_TRUE", &mut offset, stdout),
             OpCode::JumpRel => self.jmp_instruction("JUMP_REL", &mut offset, stdout),
+            OpCode::Loop => self.jmp_instruction("LOOP", &mut offset, stdout),
             OpCode::Invalid => {
                 writeln!(stdout, "INVALID OPCODE: {chunk}").unwrap();
                 offset += 1;

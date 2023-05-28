@@ -258,6 +258,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let offset = self.read::<u16>();
                     self.ip += offset as usize;
                 }
+                OpCode::Loop => {
+                    let offset = self.read::<u16>();
+                    self.ip -= offset as usize;
+                }
                 OpCode::DefineGlobal => {
                     let index = self.next_byte();
                     let value = self.stack.last().unwrap();
