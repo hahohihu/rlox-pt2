@@ -37,9 +37,14 @@ macro_rules! emit_bytes {
 }
 
 impl Chunk {
-    fn emit_continuation_byte(&mut self, byte: impl Into<u8>) {
-        let prev = self.spans.last().copied().unwrap_or(Span::from(0..0));
-        self.write_byte(byte, prev);
+    /// This is a byte which has no corresponding span and is just an implementation detail
+    fn emit_impl_byte(&mut self, byte: impl Into<u8>) {
+        self.write_byte(byte, Chunk::impl_span());
+    }
+
+    /// This is a span intended for bytes that are only implementation details
+    fn impl_span() -> Span {
+        Span::from(0..0)
     }
 
     /// PRECONDITION: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
@@ -55,7 +60,7 @@ impl Chunk {
     }
 
     fn emit_return(&mut self) {
-        self.emit_byte(OpCode::Return, 0..0);
+        self.emit_byte(OpCode::Return, Chunk::impl_span());
     }
 
     fn emit_jump(&mut self, jump: OpCode, span: Span) -> usize {
@@ -265,7 +270,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     fn end_scope(&mut self, chunk: &mut Chunk) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
-            chunk.emit_byte(OpCode::Pop, 0..0);
+            chunk.emit_impl_byte(OpCode::Pop);
             self.defined_locals.pop().unwrap();
         }
     }
@@ -387,7 +392,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         debug_assert_eq!(and.data, Token::And);
 
         let end = chunk.emit_jump(OpCode::JumpRelIfFalse, and.span);
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
 
         self.expression_bp(chunk, Precedence::from(and.data), false)?;
         self.patch_jump(chunk, end, and.span)?;
@@ -400,11 +405,23 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         debug_assert_eq!(or.data, Token::Or);
 
         let end = chunk.emit_jump(OpCode::JumpRelIfTrue, or.span);
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
 
         self.expression_bp(chunk, Precedence::from(or.data), false)?;
         self.patch_jump(chunk, end, or.span)?;
 
+        Ok(())
+    }
+
+    fn emit_loop(&mut self, chunk: &mut Chunk, span: Span, start: usize) -> ParseResult<()> {
+        chunk.emit_byte(OpCode::Loop, span);
+        let offset = chunk.instructions.len() - start + 2;
+        let Ok(offset) = u16::try_from(offset) else {
+            self.simple_error(span, "This loop would have a longer body than is supported");
+            return Err(ParseError::Handled);
+        };
+        let offset = offset.to_ne_bytes();
+        emit_bytes!(chunk, span; offset[0], offset[1]);
         Ok(())
     }
 
@@ -416,21 +433,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression(chunk, false)?;
 
         let exit = chunk.emit_jump(OpCode::JumpRelIfFalse, while_token.span);
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
 
         self.scoped_block(chunk)?;
-
-        chunk.emit_byte(OpCode::Loop, while_token.span);
-        let offset = chunk.instructions.len() - start + 2;
-        let Ok(offset) = u16::try_from(offset) else {
-            self.simple_error(while_token.span, "This loop would have a longer body than is supported");
-            return Err(ParseError::Handled);
-        };
-        let offset = offset.to_ne_bytes();
-        emit_bytes!(chunk, while_token.span; offset[0], offset[1]);
+        self.emit_loop(chunk, while_token.span, start)?;
 
         self.patch_jump(chunk, exit, while_token.span)?;
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
         Ok(())
     }
 
@@ -587,17 +596,17 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression(chunk, false)?;
 
         let then_jump = chunk.emit_jump(OpCode::JumpRelIfFalse, if_token.span);
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
         self.scoped_block(chunk)?;
-        let else_jump = chunk.emit_jump(OpCode::JumpRel, Span::from(0..0));
+        let else_jump = chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
         self.patch_jump(chunk, then_jump, if_token.span)?;
 
-        chunk.emit_continuation_byte(OpCode::Pop);
+        chunk.emit_impl_byte(OpCode::Pop);
         let else_span = if let Some(else_token) = self.matches(Token::Else) {
             self.scoped_block(chunk)?;
             else_token.span
         } else {
-            Span::from(0..0)
+            Chunk::impl_span()
         };
         self.patch_jump(chunk, else_jump, else_span)?;
 
