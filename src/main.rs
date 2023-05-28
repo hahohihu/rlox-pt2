@@ -591,4 +591,62 @@ mod test_runtime {
         }
         "
     }
+
+    snap! {
+        basic_for_loop,
+        "
+        for var a = 0; a < 3; a = a + 1 {
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        bigger_scope_for_loop,
+        "
+        var a;
+        for a = 0; a < 3; a = a + 1 {
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        empty_initializer_for_loop,
+        "
+        var a = 0;
+        for ; a < 3; a = a + 1 {
+            print a;
+        }
+        "
+    }
+
+    snap! {
+        empty_update_for_loop,
+        "
+        for var a = 0; a < 3; {
+            print a;
+            a = a + 1;
+        }
+        "
+    }
+
+    snap! {
+        nested_for_loops,
+        "
+        for var a = 0; a < 3; a = a + 1 {
+            for var b = 1; b < 3; b = b * 2 {
+                print b;
+            }
+        }
+        "
+    }
+
+    snap! {
+        for_loop_is_scoped,
+        "
+        for var a = 0; a < 3; a = a + 1 {}
+        print a;
+        "
+    }
 }

@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        for var a = 0; a < 3; a = a + 1 {}\n        print a;\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Undefined variable: a
+   ╭─[<unknown>:2:12]
+   │
+ 3 │         print a;
+   │               ─  
+   │                   
+───╯
+
+

@@ -444,17 +444,60 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn for_loop(&mut self, chunk: &mut Chunk) -> ParseResult<()> {
-        let for_token = self.pop().unwrap();
-        debug_assert_eq!(for_token.data, Token::For);
+        self.begin_scope();
+        // A poor excuse for a try block
+        let res = (|| {
+            let for_token = self.pop().unwrap();
+            debug_assert_eq!(for_token.data, Token::For);
+    
+            // initializer
+            let peeked = self.peek()?;
+            match peeked.data {
+                Token::Semicolon => {
+                    self.pop()?;
+                }
+                Token::Var => self.var_declaration(chunk)?,
+                _ => self.expression_statement(chunk)?,
+            }
+    
+            // condition
+            let mut start = chunk.instructions.len();
+            let mut exit = None;
+            if self.matches(Token::Semicolon).is_none() {
+                let peeked = self.peek()?;
+                self.expression(chunk, true)?;
+                self.check_semicolon(peeked.span)?;
+                exit = Some(chunk.emit_jump(OpCode::JumpRelIfFalse, Chunk::impl_span()));
+                chunk.emit_impl_byte(OpCode::Pop);
+            }
 
-        let peeked = self.peek()?;
-        match peeked.data {
-            Token::Semicolon => {}
-            Token::Var => self.var_declaration(chunk)?,
-            _ => self.expression_statement(chunk)?,
-        }
+            // ;_; should've ignored the book and made an AST
+            // Because we emit bytecode immediately, we can't go back to this later and put it at the end of the body
+            // So, we need to do some hacky jumps to make it work
+            if self.peek()?.data != Token::LBrace {
+                let body_jump = chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
+                let incremental_start = chunk.instructions.len();
+                self.expression(chunk, true)?;
+                chunk.emit_impl_byte(OpCode::Pop);
 
-        Ok(())
+                self.emit_loop(chunk, Chunk::impl_span(), start)?;
+                start = incremental_start;
+                self.patch_jump(chunk, body_jump, Chunk::impl_span())?;
+            }
+
+            // body 
+            self.scoped_block(chunk)?;
+            self.emit_loop(chunk, for_token.span, start)?;
+
+            if let Some(exit) = exit {
+                self.patch_jump(chunk, exit, for_token.span)?;
+                chunk.emit_impl_byte(OpCode::Pop);
+            }
+
+            Ok(())
+        })();
+        self.end_scope(chunk);
+        res
     }
 
     fn binary_op(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
