@@ -108,6 +108,7 @@ impl From<Token> for Precedence {
             Token::Less => Self::Comparison,
             Token::LessEq => Self::Comparison,
             Token::And => Self::And,
+            Token::Or => Self::Or,
             _ => Self::None,
         }
     }
@@ -409,6 +410,21 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn or_expr(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+        let or = self.pop()?;
+        debug_assert_eq!(or.data, Token::Or);
+
+        let end = chunk.emit_jump(OpCode::JumpRelIfTrue, or.span);
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
+
+        self.expression_bp(chunk, Precedence::from(or.data), can_assign)?;
+        self.patch_jump(chunk, end, or.span)?;
+
+        Ok(())
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn expression_bp(
@@ -428,9 +444,9 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
             can_assign = prec <= Precedence::Assignment;
             
-            #[allow(clippy::single_match)]
             match operation.data {
                 Token::And => return self.and_expr(chunk, can_assign),
+                Token::Or => return self.or_expr(chunk, can_assign),
                 _ => {}
             }
 
@@ -561,7 +577,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let if_token = self.pop().unwrap();
         debug_assert_eq!(if_token.data, Token::If);
         // intentionally omit mandatory parens for a Rust-like syntax
-        self.expression(chunk, true)?;
+        self.expression(chunk, false)?;
 
         let then_jump = chunk.emit_jump(OpCode::JumpRelIfFalse, if_token.span);
         unsafe {

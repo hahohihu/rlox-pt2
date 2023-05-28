@@ -492,6 +492,15 @@ mod test_runtime {
     }
 
     snap! {
+        assignment_in_parens,
+        "
+        var a;
+        a = 1 + (a = 1);
+        print a;
+        "
+    }
+
+    snap! {
         nested_if_else,
         "
         print 0;
@@ -531,6 +540,27 @@ mod test_runtime {
             print a;
         }
         print a;
+        "
+    }
+
+    snap! {
+        or_condition,
+        "
+        var a;
+        if false or (a = 1) {
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        or_short_circuit,
+        "
+        var a;
+        if true or (a = 1) {
+            print a;
+        }
         "
     }
 }

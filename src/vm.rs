@@ -1,4 +1,4 @@
-use std::{io::Write, ops::Range, mem::size_of};
+use std::{io::Write, ops::{Range}, mem::size_of};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{Pod, AnyBitPattern, try_pod_read_unaligned, pod_read_unaligned};
@@ -245,6 +245,12 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::JumpRelIfFalse => {
                     let offset = self.read::<u16>();
                     if self.stack.last().unwrap().falsey() {
+                        self.ip += offset as usize;
+                    }
+                }
+                OpCode::JumpRelIfTrue => {
+                    let offset = self.read::<u16>();
+                    if !self.stack.last().unwrap().falsey() {
                         self.ip += offset as usize;
                     }
                 }
