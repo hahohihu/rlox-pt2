@@ -1,4 +1,3 @@
-use std::intrinsics::unreachable;
 use std::io::Write;
 use std::iter::Peekable;
 
