@@ -107,6 +107,7 @@ impl From<Token> for Precedence {
             Token::GreaterEq => Self::Comparison,
             Token::Less => Self::Comparison,
             Token::LessEq => Self::Comparison,
+            Token::And => Self::And,
             _ => Self::None,
         }
     }
@@ -346,7 +347,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 unsafe { chunk.emit_byte(OpCode::Not, token.span) }
             }
             Token::LParen => {
-                self.expression(chunk, can_assign)?;
+                self.expression(chunk, true)?;
                 let next = self.pop()?;
                 if next.data != Token::RParen {
                     self.mismatched_pair(
@@ -393,6 +394,21 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn and_expr(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+        let and = self.pop()?;
+        debug_assert_eq!(and.data, Token::And);
+
+        let end = chunk.emit_jump(OpCode::JumpRelIfFalse, and.span);
+        unsafe {
+            chunk.emit_continuation_byte(OpCode::Pop);
+        }
+
+        self.expression_bp(chunk, Precedence::from(and.data), can_assign)?;
+        self.patch_jump(chunk, end, and.span)?;
+
+        Ok(())
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn expression_bp(
@@ -405,12 +421,18 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         loop {
             let operation = self.peek()?;
 
-            let prec = Precedence::from(operation.data); // todo: everything's currently left associative
+            let prec = Precedence::from(operation.data);
             if prec <= min {
                 break;
             }
 
             can_assign = prec <= Precedence::Assignment;
+            
+            #[allow(clippy::single_match)]
+            match operation.data {
+                Token::And => return self.and_expr(chunk, can_assign),
+                _ => {}
+            }
 
             self.pop().unwrap();
             self.expression_bp(chunk, prec, can_assign)?;
@@ -433,7 +455,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                     Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
                     Token::Less => emit!(OpCode::Less),
                     Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
-                    _ => unreachable!("Precedence::from must handle this"),
+                    _ => {}
                 }
             }
         }

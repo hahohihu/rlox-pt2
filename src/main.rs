@@ -511,4 +511,26 @@ mod test_runtime {
         print 5;
         "
     }
+
+    snap! {
+        and_condition,
+        "
+        var a;
+        if true and (a = 1) {
+            print a;
+        }
+        print a;
+        "
+    }
+
+    snap! {
+        and_short_circuit,
+        "
+        var a;
+        if false and (a = 1) {
+            print a;
+        }
+        print a;
+        "
+    }
 }
