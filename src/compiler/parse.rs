@@ -1,3 +1,4 @@
+use std::intrinsics::unreachable;
 use std::io::Write;
 use std::iter::Peekable;
 
@@ -425,6 +426,36 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         Ok(())
     }
 
+    fn binary_op(&mut self, chunk: &mut Chunk, can_assign: bool) -> ParseResult<()> {
+        // ought to be a binary expression
+        let operation = self.pop().unwrap();
+        let prec = Precedence::from(operation.data);
+        self.expression_bp(chunk, prec, can_assign)?;
+
+        // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
+        unsafe {
+            macro_rules! emit {
+                ($($opcode:expr),+) => {
+                    emit_bytes!(chunk, operation.span; $($opcode,)+)
+                };
+            }
+            match operation.data {
+                Token::Minus => emit!(OpCode::Sub),
+                Token::Plus => emit!(OpCode::Add),
+                Token::Slash => emit!(OpCode::Div),
+                Token::Star => emit!(OpCode::Mul),
+                Token::EqEq => emit!(OpCode::Equal),
+                Token::BangEq => emit!(OpCode::Equal, OpCode::Not),
+                Token::Greater => emit!(OpCode::Greater),
+                Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
+                Token::Less => emit!(OpCode::Less),
+                Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
+                _ => unreachable!("Expected a binary op")
+            }
+        }
+        Ok(())
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn expression_bp(
@@ -445,35 +476,11 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             can_assign = prec <= Precedence::Assignment;
             
             match operation.data {
-                Token::And => return self.and_expr(chunk, can_assign),
-                Token::Or => return self.or_expr(chunk, can_assign),
-                _ => {}
-            }
+                Token::And => self.and_expr(chunk, can_assign),
+                Token::Or => self.or_expr(chunk, can_assign),
+                _ => self.binary_op(chunk, can_assign)
+            }?
 
-            self.pop().unwrap();
-            self.expression_bp(chunk, prec, can_assign)?;
-
-            // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
-            unsafe {
-                macro_rules! emit {
-                    ($($opcode:expr),+) => {
-                        emit_bytes!(chunk, operation.span; $($opcode,)+)
-                    };
-                }
-                match operation.data {
-                    Token::Minus => emit!(OpCode::Sub),
-                    Token::Plus => emit!(OpCode::Add),
-                    Token::Slash => emit!(OpCode::Div),
-                    Token::Star => emit!(OpCode::Mul),
-                    Token::EqEq => emit!(OpCode::Equal),
-                    Token::BangEq => emit!(OpCode::Equal, OpCode::Not),
-                    Token::Greater => emit!(OpCode::Greater),
-                    Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
-                    Token::Less => emit!(OpCode::Less),
-                    Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
-                    _ => {}
-                }
-            }
         }
         Ok(())
     }
