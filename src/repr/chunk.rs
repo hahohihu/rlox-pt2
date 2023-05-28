@@ -82,8 +82,7 @@ impl Chunk {
         self.constants[index as usize]
     }
 
-    /// SAFETY: OpCode invariants must be upheld. If an opcode is n bytes, n bytes _must_ be inserted
-    pub unsafe fn write_byte(&mut self, byte: impl Into<u8>, origin: Span) {
+    pub fn write_byte(&mut self, byte: impl Into<u8>, origin: Span) {
         self.instructions.push(byte.into());
         self.spans.push(origin);
     }
@@ -166,7 +165,9 @@ impl Chunk {
             OpCode::SetGlobal => self.global_instruction("SET_GLOBAL", &mut offset, stdout),
             OpCode::SetLocal => self.byte_instruction("SET_LOCAL", &mut offset, stdout),
             OpCode::GetLocal => self.byte_instruction("GET_LOCAL", &mut offset, stdout),
-            OpCode::JumpRelIfFalse => self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout),
+            OpCode::JumpRelIfFalse => {
+                self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout)
+            }
             OpCode::JumpRelIfTrue => self.jmp_instruction("JUMP_REL_IF_TRUE", &mut offset, stdout),
             OpCode::JumpRel => self.jmp_instruction("JUMP_REL", &mut offset, stdout),
             OpCode::Loop => self.jmp_instruction("LOOP", &mut offset, stdout),

@@ -37,36 +37,29 @@ macro_rules! emit_bytes {
 }
 
 impl Chunk {
-    unsafe fn emit_continuation_byte(&mut self, byte: impl Into<u8>) {
+    fn emit_continuation_byte(&mut self, byte: impl Into<u8>) {
         let prev = self.spans.last().copied().unwrap_or(Span::from(0..0));
         self.write_byte(byte, prev);
     }
 
     /// PRECONDITION: If an OpCode is emitted, it must have the specified number of follow bytes + follow other constraints
-    unsafe fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
+    fn emit_byte(&mut self, byte: impl Into<u8>, span: impl Into<Span>) {
         self.write_byte(byte, span.into());
     }
 
     fn emit_constant(&mut self, value: Value, span: impl Into<Span>) -> u8 {
         let constant = self.add_constant(value);
         // SAFETY: constant
-        unsafe {
-            emit_bytes!(self, span; OpCode::Constant, constant);
-        }
+        emit_bytes!(self, span; OpCode::Constant, constant);
         constant
     }
 
     fn emit_return(&mut self) {
-        unsafe {
-            // SAFETY: constant
-            self.emit_byte(OpCode::Return, 0..0);
-        }
+        self.emit_byte(OpCode::Return, 0..0);
     }
 
     fn emit_jump(&mut self, jump: OpCode, span: Span) -> usize {
-        unsafe {
-            emit_bytes!(self, span; jump, 0xff, 0xff);
-        }
+        emit_bytes!(self, span; jump, 0xff, 0xff);
         self.instructions.len() - 2
     }
 }
@@ -272,9 +265,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     fn end_scope(&mut self, chunk: &mut Chunk) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
-            unsafe {
-                chunk.emit_byte(OpCode::Pop, 0..0);
-            }
+            chunk.emit_byte(OpCode::Pop, 0..0);
             self.defined_locals.pop().unwrap();
         }
     }
@@ -321,13 +312,9 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 return Err(ParseError::Handled);
             }
             self.expression(chunk, can_assign)?;
-            unsafe {
-                emit_bytes!(chunk, ident_span; set_opcode, follow_byte);
-            }
+            emit_bytes!(chunk, ident_span; set_opcode, follow_byte);
         } else {
-            unsafe {
-                emit_bytes!(chunk, ident_span; get_opcode, follow_byte);
-            }
+            emit_bytes!(chunk, ident_span; get_opcode, follow_byte);
         }
         Ok(())
     }
@@ -340,12 +327,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Minus => {
                 self.primary(chunk, can_assign)?;
                 // SAFETY: a value must be on the stack for negate to work, which primary guarantees
-                unsafe { chunk.emit_byte(OpCode::Negate, token.span) }
+                chunk.emit_byte(OpCode::Negate, token.span)
             }
             Token::Bang => {
                 self.primary(chunk, can_assign)?;
                 // SAFETY: a value must be on the stack for negate to work, which primary guarantees
-                unsafe { chunk.emit_byte(OpCode::Not, token.span) }
+                chunk.emit_byte(OpCode::Not, token.span)
             }
             Token::LParen => {
                 self.expression(chunk, true)?;
@@ -364,18 +351,18 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 let n = self.source[token.span].parse::<f64>().unwrap();
                 chunk.emit_constant(Value::Num(n), token.span);
             }
-            Token::True => unsafe {
+            Token::True => {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::True, token.span);
-            },
-            Token::False => unsafe {
+            }
+            Token::False => {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::False, token.span);
-            },
-            Token::Nil => unsafe {
+            }
+            Token::Nil => {
                 // SAFETY: constant
                 chunk.emit_byte(OpCode::Nil, token.span);
-            },
+            }
             Token::String => {
                 // remove parens
                 let str = &self.source[token.span];
@@ -400,9 +387,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         debug_assert_eq!(and.data, Token::And);
 
         let end = chunk.emit_jump(OpCode::JumpRelIfFalse, and.span);
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
 
         self.expression_bp(chunk, Precedence::from(and.data), false)?;
         self.patch_jump(chunk, end, and.span)?;
@@ -415,9 +400,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         debug_assert_eq!(or.data, Token::Or);
 
         let end = chunk.emit_jump(OpCode::JumpRelIfTrue, or.span);
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
 
         self.expression_bp(chunk, Precedence::from(or.data), false)?;
         self.patch_jump(chunk, end, or.span)?;
@@ -433,29 +416,21 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression(chunk, false)?;
 
         let exit = chunk.emit_jump(OpCode::JumpRelIfFalse, while_token.span);
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
 
         self.scoped_block(chunk)?;
 
-        unsafe {
-            chunk.emit_byte(OpCode::Loop, while_token.span);
-        }
+        chunk.emit_byte(OpCode::Loop, while_token.span);
         let offset = chunk.instructions.len() - start + 2;
         let Ok(offset) = u16::try_from(offset) else {
             self.simple_error(while_token.span, "This loop would have a longer body than is supported");
             return Err(ParseError::Handled);
         };
         let offset = offset.to_ne_bytes();
-        unsafe {
-            emit_bytes!(chunk, while_token.span; offset[0], offset[1]);
-        }
+        emit_bytes!(chunk, while_token.span; offset[0], offset[1]);
 
         self.patch_jump(chunk, exit, while_token.span)?;
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
         Ok(())
     }
 
@@ -466,25 +441,23 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression_bp(chunk, prec, can_assign)?;
 
         // SAFETY: There must be 2 prior values on the stack. This is guaranteed by primary + expression
-        unsafe {
-            macro_rules! emit {
+        macro_rules! emit {
                 ($($opcode:expr),+) => {
                     emit_bytes!(chunk, operation.span; $($opcode,)+)
                 };
             }
-            match operation.data {
-                Token::Minus => emit!(OpCode::Sub),
-                Token::Plus => emit!(OpCode::Add),
-                Token::Slash => emit!(OpCode::Div),
-                Token::Star => emit!(OpCode::Mul),
-                Token::EqEq => emit!(OpCode::Equal),
-                Token::BangEq => emit!(OpCode::Equal, OpCode::Not),
-                Token::Greater => emit!(OpCode::Greater),
-                Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
-                Token::Less => emit!(OpCode::Less),
-                Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
-                _ => unreachable!("Expected a binary op")
-            }
+        match operation.data {
+            Token::Minus => emit!(OpCode::Sub),
+            Token::Plus => emit!(OpCode::Add),
+            Token::Slash => emit!(OpCode::Div),
+            Token::Star => emit!(OpCode::Mul),
+            Token::EqEq => emit!(OpCode::Equal),
+            Token::BangEq => emit!(OpCode::Equal, OpCode::Not),
+            Token::Greater => emit!(OpCode::Greater),
+            Token::GreaterEq => emit!(OpCode::Less, OpCode::Not),
+            Token::Less => emit!(OpCode::Less),
+            Token::LessEq => emit!(OpCode::Greater, OpCode::Not),
+            _ => unreachable!("Expected a binary op"),
         }
         Ok(())
     }
@@ -507,13 +480,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             }
 
             can_assign = prec <= Precedence::Assignment;
-            
+
             match operation.data {
                 Token::And => self.and_expr(chunk),
                 Token::Or => self.or_expr(chunk),
-                _ => self.binary_op(chunk, can_assign)
+                _ => self.binary_op(chunk, can_assign),
             }?
-
         }
         Ok(())
     }
@@ -564,9 +536,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         };
         self.expression(chunk, can_assign)?;
         self.check_semicolon(token.span)?;
-        unsafe {
-            chunk.emit_byte(opcode, token.span);
-        }
+        chunk.emit_byte(opcode, token.span);
         Ok(())
     }
 
@@ -586,9 +556,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         if self.in_global_scope() {
             let nameid = chunk.globals.add_or_get(&self.source[namespan]);
-            unsafe {
-                emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
-            }
+            emit_bytes!(chunk, namespan; OpCode::DefineGlobal, nameid);
         } else {
             self.add_local(&self.source[namespan]);
         }
@@ -619,16 +587,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.expression(chunk, false)?;
 
         let then_jump = chunk.emit_jump(OpCode::JumpRelIfFalse, if_token.span);
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
         self.scoped_block(chunk)?;
         let else_jump = chunk.emit_jump(OpCode::JumpRel, Span::from(0..0));
         self.patch_jump(chunk, then_jump, if_token.span)?;
 
-        unsafe {
-            chunk.emit_continuation_byte(OpCode::Pop);
-        }
+        chunk.emit_continuation_byte(OpCode::Pop);
         let else_span = if let Some(else_token) = self.matches(Token::Else) {
             self.scoped_block(chunk)?;
             else_token.span

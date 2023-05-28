@@ -1,7 +1,7 @@
-use std::{io::Write, ops::{Range}, mem::size_of};
+use std::{io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
-use bytemuck::{Pod, AnyBitPattern, try_pod_read_unaligned, pod_read_unaligned};
+use bytemuck::{pod_read_unaligned, AnyBitPattern};
 
 use crate::{
     common::ui::{self, Span},
