@@ -1,4 +1,9 @@
-use std::{io::Write, mem::size_of, ops::Range};
+use std::{
+    io::Write,
+    mem::{size_of, transmute},
+    ops::Range,
+    ptr::{read_unaligned, NonNull},
+};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -13,7 +18,7 @@ use crate::{
 
 struct VM<'src, Stderr, Stdout> {
     chunk: Chunk,
-    ip: usize,
+    ip: NonNull<u8>,
     stack: Vec<Value>,
     source: &'src str,
     stderr: Stderr,
@@ -45,12 +50,13 @@ pub enum InterpretError {
 type InterpretResult = Result<(), InterpretError>;
 
 impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
-    fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
+    fn new(mut chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
+        debug_assert!(!chunk.instructions.is_empty());
         Self {
+            ip: NonNull::new(chunk.instructions.as_mut_ptr()).unwrap(),
             chunk,
             source,
             stack: vec![],
-            ip: 0,
             objects: vec![],
             stderr,
             stdout,
@@ -58,17 +64,18 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn next_byte(&mut self) -> u8 {
-        self.ip += 1;
-        self.chunk.instructions[self.ip - 1]
+    unsafe fn next_byte(&mut self) -> u8 {
+        let byte = *self.ip.as_ptr();
+        self.jump(1);
+        byte
     }
 
     /// This gets the span over the range relative to the current IP
     /// Note that this is a bit wonky since instructions aren't in the same order as code
     /// (and are variable-length)
     fn get_span(&self, range: Range<isize>) -> Span {
-        let start = self.ip as isize + range.start;
-        let end = self.ip as isize + range.end;
+        let start = self.ip_offset() as isize + range.start;
+        let end = self.ip_offset() as isize + range.end;
         debug_assert!(start < end);
         if start < 0 {
             // The bytecode will always have at least a return
@@ -81,7 +88,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Span::unite_many(&self.chunk.spans[range])
     }
 
-    fn read_constant(&mut self) -> Value {
+    unsafe fn read_constant(&mut self) -> Value {
         let i = self.next_byte();
         self.chunk.get_constant(i)
     }
@@ -202,16 +209,36 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Ok(())
     }
 
-    fn read<T: AnyBitPattern>(&mut self) -> T {
+    unsafe fn jump(&mut self, offset: isize) {
+        let new_ip = self.ip.as_ptr() as isize + offset;
+        debug_assert!(new_ip >= self.chunk.instructions.as_ptr() as isize);
+        debug_assert!(
+            new_ip // one past the end is ok
+                <= self
+                    .chunk
+                    .instructions
+                    .as_ptr()
+                    .add(self.chunk.instructions.len())
+                    as isize
+        );
+        self.ip = NonNull::new_unchecked(self.ip.as_ptr().offset(offset));
+    }
+
+    unsafe fn read<T: AnyBitPattern>(&mut self) -> T {
         let size = size_of::<T>();
-        let bytes = &self.chunk.instructions[self.ip..][..size];
-        self.ip += size;
-        pod_read_unaligned(bytes)
+        let data = read_unaligned(transmute(self.ip));
+        self.jump(size as isize);
+        data
+    }
+
+    fn ip_offset(&self) -> usize {
+        // ip ought to always be valid, and chunk ought to be as well
+        unsafe { self.ip.as_ptr().offset_from(self.chunk.instructions.as_ptr()) as usize }
     }
 
     fn show_debug_trace(&self) {
         self.chunk
-            .disassemble_instruction(self.ip, self.source, std::io::stdout());
+            .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
         println!("==== STACK ====");
         let stack_len = self.stack.len().saturating_sub(8);
         for value in &self.stack[stack_len..] {
@@ -227,7 +254,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         println!("=================");
     }
 
-    fn run(&mut self) -> InterpretResult {
+    unsafe fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
@@ -245,22 +272,22 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::JumpRelIfFalse => {
                     let offset = self.read::<u16>();
                     if self.stack.last().unwrap().falsey() {
-                        self.ip += offset as usize;
+                        self.jump(offset as isize);
                     }
                 }
                 OpCode::JumpRelIfTrue => {
                     let offset = self.read::<u16>();
                     if !self.stack.last().unwrap().falsey() {
-                        self.ip += offset as usize;
+                        self.jump(offset as isize);
                     }
                 }
                 OpCode::JumpRel => {
                     let offset = self.read::<u16>();
-                    self.ip += offset as usize;
+                    self.jump(offset as isize);
                 }
                 OpCode::Loop => {
                     let offset = self.read::<u16>();
-                    self.ip -= offset as usize;
+                    self.jump(-(offset as isize));
                 }
                 OpCode::DefineGlobal => {
                     let index = self.next_byte();
@@ -315,7 +342,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let a = self.stack.pop().unwrap();
                     self.stack.push(Value::Bool(a == b));
                 }
-                OpCode::Invalid => unreachable!("Reached invalid opcode at {}", self.ip),
+                OpCode::Invalid => {
+                    unreachable!("Reached invalid opcode at {}", self.ip_offset())
+                }
             }
         }
     }
@@ -330,5 +359,9 @@ pub fn interpret(source: &str, mut stderr: impl Write, mut stdout: impl Write) -
         }
     };
     let mut vm = VM::new(chunk, source, &mut stderr, &mut stdout);
-    vm.run()
+    // If the VM triggers any UB, it's either:
+    // 1. An implementation detail gone wrong
+    // 2. The codegen's fault
+    // But this entire interpreter is basically unsafe
+    unsafe { vm.run() }
 }
