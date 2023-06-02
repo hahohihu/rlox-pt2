@@ -359,6 +359,22 @@ mod test_runtime {
     }
 
     snap! {
+        cannot_use_global_var_in_declaration,
+        "
+        var a = a;
+        "
+    }
+
+    snap! {
+        cannot_use_local_var_in_declaration,
+        "
+        {
+            var a = a;
+        }
+        "
+    }
+
+    snap! {
         invalid_place,
         "
         1 = 1;
