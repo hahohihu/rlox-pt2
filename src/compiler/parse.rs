@@ -19,9 +19,9 @@ use crate::common::ui;
 use crate::common::ui::*;
 
 type LocalSymbol = InternedU8;
-struct Parser<'src, 'chunk, StdErr: Write> {
+struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
-    chunk: &'chunk mut Chunk,
+    chunk: Chunk,
     source: &'src str,
     stderr: StdErr,
     interned_locals: Interner,
@@ -149,12 +149,12 @@ macro_rules! scoped {
 
 pub type ParseResult<T> = Result<T, ParseError>;
 
-impl<'src, 'chunk, StdErr: Write> Parser<'src, 'chunk, StdErr> {
-    fn new(source: &'src str, chunk: &'chunk mut Chunk, stderr: StdErr) -> Self {
+impl<'src, StdErr: Write> Parser<'src, StdErr> {
+    fn new(source: &'src str, stderr: StdErr) -> Self {
         let lexer = Lexer::new(source).peekable();
         Self {
             lexer,
-            chunk,
+            chunk: Chunk::new(),
             source,
             stderr,
             interned_locals: Interner::default(),
@@ -686,27 +686,25 @@ impl<'src, 'chunk, StdErr: Write> Parser<'src, 'chunk, StdErr> {
         }
     }
 
-    fn top(&mut self) -> ParseResult<()> {
+    fn top(mut self) -> ParseResult<Chunk> {
         while self.peek()?.data != Token::Eof {
             self.declaration()?;
         }
-        Ok(())
+        let next = self.peek()?;
+        if next.data != Token::Eof {
+            return Err(ParseError::ExpectError {
+                expected: "EOF",
+                got: next.span,
+            });
+        }
+        self.chunk.emit_return();
+        Ok(self.chunk)
     }
 }
 
 pub fn compile(source: &str, output: impl Write) -> ParseResult<Chunk> {
-    let mut chunk = Chunk::new();
-    let mut parser = Parser::new(source, &mut chunk, output);
-    parser.top()?;
-    let next = parser.peek()?;
-    if next.data != Token::Eof {
-        return Err(ParseError::ExpectError {
-            expected: "EOF",
-            got: next.span,
-        });
-    }
-    chunk.emit_return();
-    Ok(chunk)
+    let parser = Parser::new(source, output);
+    parser.top()
 }
 
 #[cfg(test)]
