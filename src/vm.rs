@@ -18,7 +18,7 @@ use crate::{
 
 struct VM<'src, Stderr, Stdout> {
     chunk: Chunk,
-    ip: NonNull<u8>,
+    ip: usize,
     stack: Vec<Value>,
     source: &'src str,
     stderr: Stderr,
@@ -50,10 +50,10 @@ pub enum InterpretError {
 type InterpretResult = Result<(), InterpretError>;
 
 impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
-    fn new(mut chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
+    fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         debug_assert!(!chunk.instructions.is_empty());
         Self {
-            ip: NonNull::new(chunk.instructions.as_mut_ptr()).unwrap(),
+            ip: 0,
             chunk,
             source,
             stack: vec![],
@@ -64,8 +64,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    unsafe fn next_byte(&mut self) -> u8 {
-        let byte = *self.ip.as_ptr();
+    fn next_byte(&mut self) -> u8 {
+        let byte = self.chunk.instructions[self.ip];
         self.jump(1);
         byte
     }
@@ -88,7 +88,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Span::unite_many(&self.chunk.spans[range])
     }
 
-    unsafe fn read_constant(&mut self) -> Value {
+    fn read_constant(&mut self) -> Value {
         let i = self.next_byte();
         self.chunk.get_constant(i)
     }
@@ -209,31 +209,19 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Ok(())
     }
 
-    unsafe fn jump(&mut self, offset: isize) {
-        let new_ip = self.ip.as_ptr() as isize + offset;
-        debug_assert!(new_ip >= self.chunk.instructions.as_ptr() as isize);
-        debug_assert!(
-            new_ip // one past the end is ok
-                <= self
-                    .chunk
-                    .instructions
-                    .as_ptr()
-                    .add(self.chunk.instructions.len())
-                    as isize
-        );
-        self.ip = NonNull::new_unchecked(self.ip.as_ptr().offset(offset));
+    fn jump(&mut self, offset: isize) {
+        self.ip = (self.ip as isize + offset) as usize;
     }
 
-    unsafe fn read<T: AnyBitPattern>(&mut self) -> T {
+    fn read<T: AnyBitPattern>(&mut self) -> T {
         let size = size_of::<T>();
-        let data = read_unaligned(transmute(self.ip));
-        self.jump(size as isize);
-        data
+        let bytes = &self.chunk.instructions[self.ip..][..size];
+        self.ip += size;
+        pod_read_unaligned(bytes)
     }
 
     fn ip_offset(&self) -> usize {
-        // ip ought to always be valid, and chunk ought to be as well
-        unsafe { self.ip.as_ptr().offset_from(self.chunk.instructions.as_ptr()) as usize }
+        self.ip
     }
 
     fn show_debug_trace(&self) {
@@ -254,7 +242,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         println!("=================");
     }
 
-    unsafe fn run(&mut self) -> InterpretResult {
+    fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
@@ -359,9 +347,5 @@ pub fn interpret(source: &str, mut stderr: impl Write, mut stdout: impl Write) -
         }
     };
     let mut vm = VM::new(chunk, source, &mut stderr, &mut stdout);
-    // If the VM triggers any UB, it's either:
-    // 1. An implementation detail gone wrong
-    // 2. The codegen's fault
-    // But this entire interpreter is basically unsafe
-    unsafe { vm.run() }
+    vm.run()
 }
