@@ -6,11 +6,14 @@ use bytemuck::{pod_read_unaligned, AnyBitPattern};
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::object::Object,
-    repr::value::Value,
+    repr::{value::Value, native_function::NativeFunction},
     repr::{
         chunk::{Chunk, OpCode},
         function::ObjFunction,
+    },
+    repr::{
+        native_function::CallError,
+        object::{Object, ObjectKind},
     },
 };
 
@@ -123,7 +126,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Ok(())
     }
 
-    fn runtime_error(&mut self, span: Span, message: String) {
+    fn runtime_error(&mut self, span: Span, message: String) -> InterpretError {
         Report::build(ReportKind::Error, (), ui::OFFSET)
             .with_message(message)
             .with_label(Label::new(span).with_color(Color::Red))
@@ -132,6 +135,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             // it isn't currently presenting an issue, but perhaps DI was a mistake
             .write(Source::from(self.source), &mut self.stderr)
             .unwrap();
+        InterpretError::RuntimeError
     }
 
     fn define_global(&mut self, index: u8, value: Value) {
@@ -180,7 +184,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 self.stack.push(Value::Num(-n));
             }
             val => {
-                let span = self.get_span(-3..0);
+                let span = self.get_span(-1..0);
                 self.runtime_error(
                     span,
                     format!("Tried to negate a {} ({val})", val.typename()),
@@ -256,13 +260,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.stack[self.stack.len() - i - 1]
     }
 
-    fn call(&mut self, arg_count: u8) -> InterpretResult {
-        let function = self.peek(arg_count.into());
-        let Ok(function) = ObjFunction::try_from(function) else {
-            let span = self.get_span(-2..0);
-            self.runtime_error(span, format!("Cannot call a value of type {}", function.typename()));
-            return Err(InterpretError::RuntimeError);
-        };
+    fn function_call(&mut self, function: ObjFunction, arg_count: u8) -> InterpretResult {
         if function.arity != arg_count {
             let span = self.get_span(-2..0);
             self.runtime_error(
@@ -280,6 +278,55 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         });
         self.ip = function.addr;
         Ok(())
+    }
+
+    fn native_function_call(&mut self, function: NativeFunction, arg_count: u8) -> InterpretResult {
+        match function.call(&self.stack[self.stack.len() - arg_count as usize..]) {
+            Ok(value) => {
+                self.stack.push(value);
+                Ok(())
+            }
+            Err(CallError::ArityMismatch(arity)) => {
+                let span = self.get_span(-2..0);
+                Err(self.runtime_error(
+                    span,
+                    format!(
+                        "Function {} expects {} arguments, but got {}",
+                        function.name, arity, arg_count
+                    ),
+                ))
+            }
+            Err(CallError::TypeMismatch(index, expected)) => {
+                let span = self.get_span(-2..0);
+                Err(self.runtime_error(
+                    span,
+                    format!("Argument {} expected {}", index, expected),
+                ))
+            }
+        }
+    }
+
+    fn call(&mut self, arg_count: u8) -> InterpretResult {
+        let value = self.peek(arg_count.into());
+        // can't capture self so a macro will have to do
+        macro_rules! call_type_error {
+            () => {{
+                let span = self.get_span(-2..0);
+                self.runtime_error(
+                    span,
+                    format!("Canot call a value of type {}", value.typename()),
+                );
+                Err(InterpretError::RuntimeError)
+            }};
+        }
+        let Ok(obj) = ObjectKind::try_from(value) else {
+            return call_type_error!();
+        };
+        match obj {
+            ObjectKind::Function { fun } => self.function_call(fun, arg_count),
+            ObjectKind::NativeFunction { fun } => self.native_function_call(fun, arg_count),
+            _ => call_type_error!(),
+        }
     }
 
     fn run(&mut self) -> InterpretResult {

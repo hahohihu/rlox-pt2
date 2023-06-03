@@ -1,4 +1,7 @@
 use std::io::Write;
+use std::time::Instant;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use crate::repr::function::ObjFunction;
 use crate::repr::interner::InternedU8;
@@ -6,6 +9,8 @@ use crate::repr::interner::Interner;
 
 use crate::repr::chunk::Chunk;
 use crate::repr::chunk::OpCode;
+use crate::repr::native_function::CallError;
+use crate::repr::native_function::NativeFunction;
 use crate::repr::string::UnsafeString;
 use crate::repr::value::Value;
 
@@ -408,11 +413,34 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     }
 
     fn top(mut self, top: &Statements) -> CodegenResult<Chunk> {
+        self.define_native_function("clock", |values| {
+            if !values.is_empty() {
+                return Err(CallError::ArityMismatch(0));
+            }
+            let time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs_f64();
+            Ok(Value::Num(time))
+        });
         for statement in top.0.iter() {
             self.statement(&statement.data)?
         }
         self.chunk.emit_return();
         Ok(self.chunk)
+    }
+
+    fn define_native_function(
+        &mut self,
+        name: &str,
+        function: fn(&[Value]) -> Result<Value, CallError>,
+    ) {
+        self.chunk.emit_constant(Value::from(NativeFunction {
+            name: UnsafeString::from(name),
+            function,
+        }), Chunk::impl_span());
+        let nameid = self.chunk.globals.add_or_get(name);
+        emit_bytes!(self.chunk, Chunk::impl_span(); OpCode::DefineGlobal, nameid);
     }
 }
 

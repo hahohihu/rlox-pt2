@@ -868,4 +868,39 @@ mod test_runtime {
         print add(2, 1);
         "
     }
+
+    snap! {
+        clock_call,
+        // time is variable and I don't want to constantly accept this
+        "
+        var time = clock();
+        print time / time;
+        "
+    }
+
+    snap! {
+        clock_call_wrong_arity,
+        "
+        clock(1);
+        "
+    }
+
+    snap! {
+        clock_scoped,
+        "
+        {
+            clock();
+        }
+        "
+    }
+
+    snap! {
+        clock_overload,
+        "
+        fun clock() {
+            return 1;
+        }
+        print clock();
+        "
+    }
 }

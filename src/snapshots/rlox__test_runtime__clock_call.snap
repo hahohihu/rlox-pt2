@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        var time = clock();\n        print time / time;\n        \")"
+---
+stdout:
+1
+
+
+stderr:
+
+

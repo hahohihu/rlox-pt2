@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        clock(1);\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Function clock expects 0 arguments, but got 1
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         clock(1);
+   │         ─────  
+   │                 
+───╯
+
+

@@ -1,6 +1,6 @@
 ---
-source: src/vm.rs
-expression: "crate::util::mock_interpret(\"print -true;\")"
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"print -true;\")"
 ---
 stdout:
 
@@ -10,8 +10,8 @@ Error: Tried to negate a boolean (true)
    ╭─[<unknown>:1:13]
    │
  1 │ print -true;
-   │        ────  
-   │               
+   │       ─  
+   │           
 ───╯
 
 

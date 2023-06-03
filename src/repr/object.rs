@@ -1,5 +1,7 @@
 use super::alloc;
 use super::function::ObjFunction;
+use super::native_function::NativeFunction;
+use super::value::Value;
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -53,6 +55,12 @@ impl From<ObjFunction> for Object {
     }
 }
 
+impl From<NativeFunction> for Object {
+    fn from(fun: NativeFunction) -> Self {
+        Self::from(ObjectKind::NativeFunction { fun })
+    }
+}
+
 impl Object {
     pub fn typename(self) -> &'static str {
         self.inner.as_ref().kind.typename()
@@ -73,11 +81,9 @@ impl Object {
     }
 }
 
-impl TryFrom<Object> for ObjFunction {
-    type Error = ();
-
-    fn try_from(value: Object) -> Result<Self, Self::Error> {
-        value.inner.as_ref().kind.try_into()
+impl From<Object> for ObjectKind {
+    fn from(value: Object) -> Self {
+        value.inner.as_ref().kind
     }
 }
 
@@ -90,9 +96,10 @@ struct ObjectInner {
 
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum ObjectKind {
+pub enum ObjectKind {
     String { str: UnsafeString },
     Function { fun: ObjFunction },
+    NativeFunction { fun: NativeFunction }
 }
 
 impl Display for ObjectKind {
@@ -100,6 +107,7 @@ impl Display for ObjectKind {
         match self {
             Self::String { str } => str.fmt(f),
             Self::Function { fun } => write!(f, "<function {}>", fun.name),
+            Self::NativeFunction { fun } => fun.fmt(f)
         }
     }
 }
@@ -112,23 +120,12 @@ impl From<String> for ObjectKind {
     }
 }
 
-impl TryFrom<ObjectKind> for ObjFunction {
-    type Error = ();
-
-    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
-        if let ObjectKind::Function { fun } = value {
-            Ok(fun)
-        } else {
-            Err(())
-        }
-    }
-}
-
 impl ObjectKind {
     fn typename(self) -> &'static str {
         match self {
             Self::String { .. } => "string",
             Self::Function { .. } => "function",
+            Self::NativeFunction { .. } => "native-function"
         }
     }
 
@@ -147,6 +144,7 @@ impl ObjectKind {
         match self {
             Self::String { str } => str.free(),
             Self::Function { fun } => fun.free(),
+            Self::NativeFunction { fun } => fun.free()
         }
     }
 }

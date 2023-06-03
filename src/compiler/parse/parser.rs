@@ -24,7 +24,6 @@ use super::UnaryKind;
 use crate::common::ui;
 use crate::common::ui::*;
 
-type LocalSymbol = InternedU8;
 struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
