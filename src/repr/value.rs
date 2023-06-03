@@ -55,3 +55,9 @@ impl From<&str> for Value {
         Self::Object(Object::from(String::from(value)))
     }
 }
+
+impl<T: Into<Object>> From<T> for Value {
+    fn from(value: T) -> Self {
+        Value::Object(value.into())
+    }
+}

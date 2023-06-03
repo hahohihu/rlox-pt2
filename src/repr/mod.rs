@@ -5,3 +5,4 @@ pub mod object;
 pub mod string;
 pub mod valid;
 pub mod value;
+pub mod function;

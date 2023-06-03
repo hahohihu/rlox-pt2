@@ -665,4 +665,13 @@ mod test_runtime {
         print a;
         "
     }
+
+    snap! {
+        function_declaration,
+        "
+        fun foo() {}
+
+        print foo;
+        "
+    }
 }

@@ -1,4 +1,5 @@
 use super::alloc;
+use super::function::ObjFunction;
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -46,6 +47,12 @@ impl From<UnsafeString> for Object {
     }
 }
 
+impl From<ObjFunction> for Object {
+    fn from(fun: ObjFunction) -> Self {
+        Self::from(ObjectKind::Function { fun })
+    }
+}
+
 impl Object {
     pub fn typename(self) -> &'static str {
         self.inner.as_ref().kind.typename()
@@ -74,15 +81,17 @@ struct ObjectInner {
 }
 
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ObjectKind {
     String { str: UnsafeString },
+    Function { fun: ObjFunction },
 }
 
 impl Display for ObjectKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String { str } => str.fmt(f),
+            Self::Function { fun } => write!(f, "<function {}>", fun.name),
         }
     }
 }
@@ -99,6 +108,7 @@ impl ObjectKind {
     fn typename(self) -> &'static str {
         match self {
             Self::String { .. } => "string",
+            Self::Function { .. } => "function",
         }
     }
 
@@ -109,12 +119,14 @@ impl ObjectKind {
     unsafe fn assume_string(self) -> UnsafeString {
         match self {
             Self::String { str } => str,
+            _ => unreachable!()
         }
     }
 
     unsafe fn free(self) {
         match self {
             Self::String { str } => str.free(),
+            Self::Function { fun } => fun.free()
         }
     }
 }

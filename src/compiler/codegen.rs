@@ -1,10 +1,12 @@
 use std::io::Write;
 
+use crate::repr::function::ObjFunction;
 use crate::repr::interner::InternedU8;
 use crate::repr::interner::Interner;
 
 use crate::repr::chunk::Chunk;
 use crate::repr::chunk::OpCode;
+use crate::repr::string::UnsafeString;
 use crate::repr::value::Value;
 
 use crate::common::ui;
@@ -20,8 +22,8 @@ use super::parse::Statement;
 use super::parse::Statements;
 use super::parse::UnaryKind;
 
-struct CallFrame {
-    base_pointer: u8,
+struct StaticCallFrame {
+    base_pointer: usize,
 }
 
 type LocalSymbol = InternedU8;
@@ -32,6 +34,7 @@ struct Compiler<'src, StdErr: Write> {
     interned_locals: Interner,
     defined_locals: Vec<LocalSymbol>,
     scope_size: Vec<LocalSymbol>,
+    static_call_stack: Vec<StaticCallFrame>,
 }
 
 pub type CodegenResult<T> = Result<T, ()>;
@@ -86,6 +89,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             interned_locals: Interner::default(),
             defined_locals: Default::default(),
             scope_size: Default::default(),
+            static_call_stack: vec![StaticCallFrame { base_pointer: 0 }],
         }
     }
 
@@ -123,8 +127,15 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
 
     fn resolve_local(&self, name: &str) -> Option<LocalSymbol> {
         let nameid = self.interned_locals.get(name)?;
-        for (i, local) in self.defined_locals.iter().enumerate().rev() {
+        // offset is needed to handle functions
+        // i - base_pointer for offset, which the VM will use with base_pointer + i
+        // there is conceptual overlap, but the previous bp is static, where the latter bp is dynamic
+        let base_pointer = self.static_call_stack.last().unwrap().base_pointer;
+        for (i, local) in self.defined_locals[base_pointer..].iter().enumerate().rev() {
             if nameid == *local {
+                // putting function code inline + jumping over it is slightly sus with closures or self-modifying code, but I don't think the latter will happen
+                // and iirc, closure code will be modified such that they don't need duplication
+                // todo: this will actually crash if it doesn't fit
                 return Some(i.try_into().unwrap());
             }
         }
@@ -270,17 +281,56 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         res
     }
 
-    fn function_call(&mut self, _call: &Call) -> CodegenResult<()> {
+    fn function_call(&mut self, call: &Call) -> CodegenResult<()> {
+        let Call { callee, args } = call;
         todo!()
     }
 
     fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {
         let FunctionDeclaration {
-            name: _,
-            args: _,
-            body: _,
+            name,
+            args,
+            body,
         } = declaration;
-        todo!()
+        // Todo: mark function name as local so it can be used recursively
+
+        // We aren't making separate chunks to keep everything in the same allocation
+        // So skip the function
+        let skip = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
+
+        self.static_call_stack.push(StaticCallFrame { base_pointer: self.defined_locals.len() });
+
+        self.begin_scope(); // fyi: if we ever add recovery, this may break
+
+        // callee must initialize the args, this is just to make the offsets work
+        for arg in args {
+            self.add_local(&arg.data);
+        }
+
+        let function_start = self.chunk.instructions.len();
+        self.block(&body.data)?;
+        self.end_scope();
+        self.static_call_stack.pop().unwrap();
+        self.chunk.emit_return();
+
+        self.patch_jump(skip, Chunk::impl_span())?;
+
+        let function = ObjFunction {
+            arity: args.len().try_into().unwrap(),
+            addr: function_start,
+            name: UnsafeString::from(name.data.as_str()),
+        };
+
+        self.chunk.emit_constant(function.into(), name.span);
+        // This is very much incorrect, but is a temporary stopgap to see if we can get non-recursive functions working
+        if self.in_global_scope() {
+            let nameid = self.chunk.globals.add_or_get(&name.data);
+            emit_bytes!(self.chunk, name.span; OpCode::DefineGlobal, nameid);
+        } else {
+            self.add_local(&name.data);
+        }
+
+        Ok(())
     }
 
     fn statement(&mut self, statement: &Statement) -> CodegenResult<()> {
