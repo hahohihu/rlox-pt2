@@ -1,4 +1,5 @@
 mod lex;
-pub mod parse;
-pub use parse::compile;
+mod compile;
+pub use compile::compile;
+mod parse;
 mod ast;
