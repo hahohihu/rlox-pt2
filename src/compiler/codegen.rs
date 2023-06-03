@@ -294,6 +294,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {
         let FunctionDeclaration { name, args, body } = declaration;
         // Todo: mark function name as local so it can be used recursively
+        // This currently works with globals, but not locals - however, this falls partially under the purview of closures
 
         // We aren't making separate chunks to keep everything in the same allocation
         // So skip the function

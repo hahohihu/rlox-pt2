@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        fun add(a, b) {\n            if a == 0 {\n                return b;\n            } else {\n                return add(a - 1, b + 1);\n            }\n        }\n\n        print add(2, 1);\n        \")"
+---
+stdout:
+3
+
+
+stderr:
+
+

@@ -853,4 +853,19 @@ mod test_runtime {
         return 1;
         "
     }
+
+    snap! {
+        recursive_global,
+        "
+        fun add(a, b) {
+            if a == 0 {
+                return b;
+            } else {
+                return add(a - 1, b + 1);
+            }
+        }
+
+        print add(2, 1);
+        "
+    }
 }
