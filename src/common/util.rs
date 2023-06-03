@@ -1,5 +1,4 @@
-use std::sync::Once;
-use tracing::Level;
+
 
 #[macro_export]
 macro_rules! noop {
@@ -13,7 +12,10 @@ macro_rules! black_box {
     };
 }
 
+#[cfg(test)]
 pub fn setup_test() {
+    use std::sync::Once;
+    use tracing::Level;
     static LOGGING: Once = Once::new();
     LOGGING.call_once(|| {
         tracing_subscriber::fmt()
@@ -33,6 +35,14 @@ pub fn mock_interpret(source: &str) -> String {
 }
 
 #[cfg(test)]
+pub fn mock_parse(source: &str) -> String {
+    let mut stderr = vec![];
+    let ast = crate::compiler::parse(source, &mut stderr).unwrap();
+    let stderr = String::from_utf8(strip_ansi_escapes::strip(stderr).unwrap()).unwrap();
+    format!("AST:\n{ast}\n\nstderr:\n{stderr}\n")
+}
+
+#[cfg(test)]
 #[cfg(feature = "snap")]
 pub use ::insta::assert_snapshot;
 #[cfg(test)]
@@ -48,4 +58,26 @@ macro_rules! snap {
             $crate::common::util::assert_snapshot!($crate::common::util::mock_interpret($input));
         }
     };
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! parse {
+    ($name:ident, $input:literal) => {
+        paste::paste!(
+            #[test]
+            fn [<_parse_test_ $name>]() {
+                $crate::common::util::assert_snapshot!($crate::common::util::mock_parse($input));
+            }
+        );
+    };
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! snap_success {
+    ($name:ident, $input: literal) => {
+        $crate::snap!($name, $input);
+        $crate::parse!($name, $input);
+    }
 }

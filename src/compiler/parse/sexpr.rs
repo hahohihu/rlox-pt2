@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-pub use super::tree::*;
+pub use super::ast::*;
 
 impl Display for BinaryKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,66 +46,63 @@ impl Display for Literal {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Assignment { id, rhs } => write!(f, "(set {} {})", id.data, rhs),
-            Expression::Binary { kind, lhs, rhs } => write!(f, "({} {} {})", kind, lhs, rhs),
-            Expression::Unary { kind, val } => write!(f, "({} {})", kind, val),
+            Expression::Assignment { id, rhs } => write!(f, "(set {} {})", id.data, rhs.data),
+            Expression::Binary(BinaryExpr { kind, lhs, rhs }) => write!(f, "({} {} {})", kind.data, lhs.data, rhs.data),
+            Expression::Unary { kind, val } => write!(f, "({} {})", kind.data, val.data),
             Expression::Literal(lit) => lit.data.fmt(f),
             Expression::Identifier(id) => id.data.fmt(f),
         }
     }
 }
 
-fn print_many<T: Display>(
-    mut it: impl Iterator<Item = T>,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
-    "(".fmt(f)?;
-    if let Some(stmt) = it.next() {
-        stmt.fmt(f)?;
-        for stmt in it {
-            write!(f, " {stmt}")?;
-        }
-    }
-    ")".fmt(f)
-}
-
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Expr(expr) => expr.fmt(f),
-            Statement::Print(expr) => expr.fmt(f),
+            Statement::Expr(expr) => expr.data.fmt(f),
+            Statement::Print(expr) => expr.data.fmt(f),
             Statement::VarDeclaration { id, rhs } => {
                 write!(f, "(var {}", id.data)?;
                 if let Some(rhs) = rhs {
-                    write!(f, " {}", rhs)?;
+                    write!(f, " {}", rhs.data)?;
                 }
                 ")".fmt(f)
             },
-            Statement::Block(body) => print_many(body.iter(), f),
+            Statement::Block(body) => body.data.fmt(f),
             Statement::IfElse {
                 cond,
                 then_branch,
                 else_branch,
             } => {
-                write!(f, "(if {cond} ",)?;
-                print_many(then_branch.iter(), f)?;
+                write!(f, "(if {} {}", cond.data, then_branch)?;
                 if let Some(branch) = else_branch {
-                    print_many(branch.iter(), f)?;
+                    branch.fmt(f)?;
                 }
                 ")".fmt(f)
             }
             Statement::While { cond, body } => {
-                write!(f, "(while {cond} ")?;
-                print_many(body.iter(), f)?;
-                ")".fmt(f)
+                write!(f, "(while {} {})", cond.data, body)
             },
             Statement::Return { span, value } => {
                 write!(f, "(return")?;
                 if let Some(value) = value {
-                    write!(f, " {}", value)?;
+                    write!(f, " {}", value.data)?;
                 }
                 ")".fmt(f)
             },
         }
+    }
+}
+
+impl Display for Statements {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        "(".fmt(f)?;
+        let mut it = self.0.iter();
+        if let Some(stmt) = it.next() {
+            stmt.fmt(f)?;
+            for stmt in it {
+                write!(f, " {stmt}")?;
+            }
+        }
+        ")".fmt(f)
     }
 }

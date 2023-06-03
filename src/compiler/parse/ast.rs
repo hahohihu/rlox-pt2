@@ -1,6 +1,7 @@
 use crate::common::ui::{Span, Spanned};
 
 pub type Identifier = String;
+pub type Node<T> = Box<Spanned<T>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinaryKind {
@@ -33,45 +34,49 @@ pub enum Literal {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct BinaryExpr {
+    pub kind: Spanned<BinaryKind>,
+    pub lhs: Node<Expression>,
+    pub rhs: Node<Expression>
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Assignment {
         id: Spanned<Identifier>,
-        rhs: Box<Expression>,
+        rhs: Node<Expression>,
     },
-    Binary {
-        kind: BinaryKind,
-        lhs: Box<Expression>,
-        rhs: Box<Expression>,
-    },
+    Binary(BinaryExpr),
     Unary {
-        kind: UnaryKind,
-        val: Box<Expression>,
+        kind: Spanned<UnaryKind>,
+        val: Node<Expression>,
     },
     Literal(Spanned<Literal>),
     Identifier(Spanned<Identifier>),
 }
 
-pub type Statements = Vec<Statement>;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Statements(pub Vec<Spanned<Statement>>);
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
-    Expr(Expression),
-    Print(Expression),
+    Expr(Spanned<Expression>),
+    Print(Spanned<Expression>),
     VarDeclaration {
         id: Spanned<Identifier>,
-        rhs: Option<Expression>,
+        rhs: Option<Spanned<Expression>>,
     },
-    Block(Statements),
+    Block(Spanned<Statements>),
     IfElse {
-        cond: Expression,
-        then_branch: Statements,
-        else_branch: Option<Statements>,
+        cond: Spanned<Expression>,
+        then_branch: Spanned<Statements>,
+        else_branch: Option<Spanned<Statements>>,
     },
     While {
-        cond: Expression,
-        body: Statements,
+        cond: Spanned<Expression>,
+        body: Spanned<Statements>,
     },
     Return {
         span: Span,
-        value: Option<Expression>,
+        value: Option<Spanned<Expression>>,
     },
 }

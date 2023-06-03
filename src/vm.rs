@@ -349,12 +349,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
 }
 
 pub fn interpret(source: &str, mut stderr: impl Write, mut stdout: impl Write) -> InterpretResult {
-    let chunk = match compile(source, &mut stderr) {
-        Ok(chunk) => chunk,
-        Err(e) => {
-            e.print(&mut stderr, source);
-            return Err(InterpretError::CompileError);
-        }
+    let Some(chunk) = compile(source, &mut stderr) else {
+        return Err(InterpretError::CompileError);
     };
     let mut vm = VM::new(chunk, source, &mut stderr, &mut stdout);
     vm.run()

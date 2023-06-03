@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::{ops::Index, fmt::Display};
 
 use tracing::warn;
 
@@ -41,6 +41,14 @@ impl Span {
             Span::from(0..0)
         }
     }
+
+    pub fn maybe_unite<T>(self, other: Option<Spanned<T>>) -> Span {
+        if let Some(span) = other {
+            self.unite(span.span)
+        } else {
+            self
+        }
+    }
 }
 
 impl ariadne::Span for Span {
@@ -75,6 +83,29 @@ impl<T: Copy> Copy for Spanned<T> {}
 impl<T> Spanned<T> {
     pub fn new(data: T, span: Span) -> Self {
         Self { data, span }
+    }
+
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+}
+
+impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.data.fmt(f)
+    }
+}
+
+pub trait WithSpanExt: Sized {
+    fn with_span(self, span: Span) -> Spanned<Self>;
+}
+
+impl<T> WithSpanExt for T {
+    fn with_span(self, span: Span) -> Spanned<Self> {
+        Spanned {
+            data: self,
+            span
+        }
     }
 }
 

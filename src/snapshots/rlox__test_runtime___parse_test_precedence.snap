@@ -1,0 +1,10 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_parse(\"print 1 * 2 == 4 / 2;\")"
+---
+AST:
+((== (* 1 2) (/ 4 2)))
+
+stderr:
+
+
