@@ -1,4 +1,4 @@
-use super::{alloc, function::ObjFunction, object::ObjectKind};
+use super::{alloc, object::ObjectKind};
 use std::fmt::Display;
 
 use super::object::Object;

@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use super::{value::Value, string::UnsafeString};
+use super::{string::UnsafeString, value::Value};
 
 pub enum CallError {
     ArityMismatch(u8),
@@ -10,7 +10,7 @@ pub enum CallError {
 #[derive(Copy, Clone)]
 pub struct NativeFunction {
     pub name: UnsafeString,
-    pub function: fn(&[Value]) -> Result<Value, CallError>
+    pub function: fn(&[Value]) -> Result<Value, CallError>,
 }
 
 impl PartialEq for NativeFunction {

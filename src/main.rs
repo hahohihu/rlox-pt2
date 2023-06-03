@@ -903,4 +903,13 @@ mod test_runtime {
         print clock();
         "
     }
+
+    snap! {
+        comments,
+        "
+        // comment
+        print 1; // number
+        // comment print 2;
+        "
+    }
 }

@@ -2,6 +2,7 @@ use crate::common::ui::{Span, Spanned};
 use logos::Logos;
 
 #[derive(Logos, Debug, PartialEq, Copy, Clone)]
+#[logos(skip r"//[^\n]*")]
 #[logos(skip r"[ \n\r\f]+")]
 pub enum Token {
     #[token("(")]

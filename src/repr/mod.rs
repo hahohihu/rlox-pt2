@@ -1,8 +1,8 @@
 pub mod alloc;
 pub mod chunk;
 pub mod function;
-pub mod native_function;
 pub mod interner;
+pub mod native_function;
 pub mod object;
 pub mod string;
 pub mod valid;

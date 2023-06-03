@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::time::Instant;
+
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -435,10 +435,13 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         name: &str,
         function: fn(&[Value]) -> Result<Value, CallError>,
     ) {
-        self.chunk.emit_constant(Value::from(NativeFunction {
-            name: UnsafeString::from(name),
-            function,
-        }), Chunk::impl_span());
+        self.chunk.emit_constant(
+            Value::from(NativeFunction {
+                name: UnsafeString::from(name),
+                function,
+            }),
+            Chunk::impl_span(),
+        );
         let nameid = self.chunk.globals.add_or_get(name);
         emit_bytes!(self.chunk, Chunk::impl_span(); OpCode::DefineGlobal, nameid);
     }

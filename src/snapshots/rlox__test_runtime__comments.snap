@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        // comment\n        print 1; // number\n        // comment print 1;\n        \")"
+---
+stdout:
+1
+
+
+stderr:
+
+

@@ -1,7 +1,7 @@
 use super::alloc;
 use super::function::ObjFunction;
 use super::native_function::NativeFunction;
-use super::value::Value;
+
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -99,7 +99,7 @@ struct ObjectInner {
 pub enum ObjectKind {
     String { str: UnsafeString },
     Function { fun: ObjFunction },
-    NativeFunction { fun: NativeFunction }
+    NativeFunction { fun: NativeFunction },
 }
 
 impl Display for ObjectKind {
@@ -107,7 +107,7 @@ impl Display for ObjectKind {
         match self {
             Self::String { str } => str.fmt(f),
             Self::Function { fun } => write!(f, "<function {}>", fun.name),
-            Self::NativeFunction { fun } => fun.fmt(f)
+            Self::NativeFunction { fun } => fun.fmt(f),
         }
     }
 }
@@ -125,7 +125,7 @@ impl ObjectKind {
         match self {
             Self::String { .. } => "string",
             Self::Function { .. } => "function",
-            Self::NativeFunction { .. } => "native-function"
+            Self::NativeFunction { .. } => "native-function",
         }
     }
 
@@ -144,7 +144,7 @@ impl ObjectKind {
         match self {
             Self::String { str } => str.free(),
             Self::Function { fun } => fun.free(),
-            Self::NativeFunction { fun } => fun.free()
+            Self::NativeFunction { fun } => fun.free(),
         }
     }
 }

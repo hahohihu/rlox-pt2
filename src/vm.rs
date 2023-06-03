@@ -6,7 +6,6 @@ use bytemuck::{pod_read_unaligned, AnyBitPattern};
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::{value::Value, native_function::NativeFunction},
     repr::{
         chunk::{Chunk, OpCode},
         function::ObjFunction,
@@ -15,6 +14,7 @@ use crate::{
         native_function::CallError,
         object::{Object, ObjectKind},
     },
+    repr::{native_function::NativeFunction, value::Value},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -298,10 +298,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             }
             Err(CallError::TypeMismatch(index, expected)) => {
                 let span = self.get_span(-2..0);
-                Err(self.runtime_error(
-                    span,
-                    format!("Argument {} expected {}", index, expected),
-                ))
+                Err(self.runtime_error(span, format!("Argument {} expected {}", index, expected)))
             }
         }
     }
