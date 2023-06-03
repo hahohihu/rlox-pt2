@@ -58,7 +58,7 @@ impl ariadne::Span for Span {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Spanned<T> {
     pub data: T,
     pub span: Span,
