@@ -15,6 +15,7 @@ pub enum OpCode {
     False,
     // 1 follow bytes ====
     Constant, // 1: a constant index
+    Call,
     // 2 follow bytes ====
     JumpRelIfFalse,
     JumpRelIfTrue,
@@ -165,6 +166,7 @@ impl Chunk {
             OpCode::SetGlobal => self.global_instruction("SET_GLOBAL", &mut offset, stdout),
             OpCode::SetLocal => self.byte_instruction("SET_LOCAL", &mut offset, stdout),
             OpCode::GetLocal => self.byte_instruction("GET_LOCAL", &mut offset, stdout),
+            OpCode::Call => self.byte_instruction("CALL", &mut offset, stdout),
             OpCode::JumpRelIfFalse => {
                 self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout)
             }

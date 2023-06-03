@@ -1,4 +1,4 @@
-use super::alloc;
+use super::{alloc, function::ObjFunction};
 use std::fmt::Display;
 
 use super::object::Object;
@@ -61,3 +61,16 @@ impl<T: Into<Object>> From<T> for Value {
         Value::Object(value.into())
     }
 }
+
+impl TryFrom<Value> for ObjFunction {
+    type Error = ();
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        if let Value::Object(obj) = value {
+            obj.try_into()
+        } else {
+            Err(())
+        }
+    }
+}
+

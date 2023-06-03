@@ -73,6 +73,15 @@ impl Object {
     }
 }
 
+impl TryFrom<Object> for ObjFunction {
+    type Error = ();
+
+    fn try_from(value: Object) -> Result<Self, Self::Error> {
+        value.inner.as_ref().kind.try_into()
+    }
+}
+
+
 // ==================================================== Internals below here
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -103,6 +112,19 @@ impl From<String> for ObjectKind {
         }
     }
 }
+
+impl TryFrom<ObjectKind> for ObjFunction {
+    type Error = ();
+
+    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
+        if let ObjectKind::Function { fun } = value {
+            Ok(fun)
+        } else {
+            Err(())
+        }
+    }
+}
+
 
 impl ObjectKind {
     fn typename(self) -> &'static str {

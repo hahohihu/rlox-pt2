@@ -6,7 +6,7 @@ use bytemuck::{pod_read_unaligned, AnyBitPattern};
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::chunk::{Chunk, OpCode},
+    repr::{chunk::{Chunk, OpCode}, function::ObjFunction},
     repr::object::Object,
     repr::value::Value,
 };
@@ -14,6 +14,7 @@ use crate::{
 #[derive(Copy, Clone, Debug)]
 struct CallFrame {
     base_pointer: usize,
+    return_addr: usize
 }
 
 struct VM<'src, Stderr, Stdout> {
@@ -54,7 +55,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         debug_assert!(!chunk.instructions.is_empty());
         Self {
-            callframe: vec![CallFrame { base_pointer: 0 }],
+            callframe: vec![CallFrame { base_pointer: 0, return_addr: 0 }],
             ip: 0,
             chunk,
             source,
@@ -245,6 +246,27 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         println!("=================");
     }
 
+    fn peek(&self, i: usize) -> Value {
+        self.stack[self.stack.len() - i - 1]
+    }
+
+    fn call(&mut self, arg_count: u8) -> InterpretResult {
+        let function = self.peek(arg_count.into());
+        let Ok(function) = ObjFunction::try_from(function) else {
+            let span = self.get_span(-2..0);
+            self.runtime_error(span, format!("Cannot call a value of type {}", function.typename()));
+            return Err(InterpretError::RuntimeError);
+        };
+        if function.arity != arg_count {
+            let span = self.get_span(-2..0);
+            self.runtime_error(span, format!("Function {} expects {} arguments, but got {}", function.name, function.arity, arg_count));
+            return Err(InterpretError::RuntimeError);
+        }
+        self.callframe.push(CallFrame { base_pointer: self.stack.len(), return_addr: self.ip });
+        self.ip = function.addr;
+        Ok(())
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
@@ -256,7 +278,20 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {
-                    return Ok(());
+                    let res = self.stack.pop().unwrap();
+                    let callframe = self.callframe.pop().unwrap();
+                    if self.callframe.is_empty() {
+                        return Ok(());
+                    }
+                    while self.stack.len() > callframe.base_pointer {
+                        self.stack.pop().unwrap();
+                    }
+                    self.stack.push(res);
+                    self.ip = callframe.return_addr;
+                }
+                OpCode::Call => {
+                    let arg_count = self.next_byte();
+                    self.call(arg_count)?;
                 }
                 OpCode::Pop => {
                     self.stack.pop().unwrap();

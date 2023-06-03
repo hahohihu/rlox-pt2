@@ -71,7 +71,7 @@ impl Chunk {
     }
 
     fn emit_return(&mut self) {
-        self.emit_byte(OpCode::Return, Chunk::impl_span());
+        emit_bytes!(self, Chunk::impl_span(); OpCode::Nil, OpCode::Return);
     }
 
     fn emit_jump(&mut self, jump: OpCode, span: Span) -> usize {
@@ -283,7 +283,12 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
 
     fn function_call(&mut self, call: &Call) -> CodegenResult<()> {
         let Call { callee, args } = call;
-        todo!()
+        self.expression(&callee.data)?;
+        for arg in args {
+            self.expression(&arg.data)?;
+        }
+        emit_bytes!(self.chunk, callee.span; OpCode::Call, args.len() as u8);
+        Ok(())
     }
 
     fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {

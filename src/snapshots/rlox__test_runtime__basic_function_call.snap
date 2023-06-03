@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(r#\"\n        fun hello_world() {\n            print \"Hello, World!\"; \n        }\n        \n        hello_world();\n        \"#)"
+---
+stdout:
+Hello, World!
+
+
+stderr:
+
+

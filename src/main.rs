@@ -674,4 +674,15 @@ mod test_runtime {
         print foo;
         "
     }
+
+    snap! {
+        basic_function_call,
+        r#"
+        fun hello_world() {
+            print "Hello, World!"; 
+        }
+        
+        hello_world();
+        "#
+    }
 }
