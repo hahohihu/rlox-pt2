@@ -73,4 +73,3 @@ impl TryFrom<Value> for ObjFunction {
         }
     }
 }
-

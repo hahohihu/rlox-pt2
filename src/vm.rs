@@ -6,15 +6,18 @@ use bytemuck::{pod_read_unaligned, AnyBitPattern};
 use crate::{
     common::ui::{self, Span},
     compiler::compile,
-    repr::{chunk::{Chunk, OpCode}, function::ObjFunction},
     repr::object::Object,
     repr::value::Value,
+    repr::{
+        chunk::{Chunk, OpCode},
+        function::ObjFunction,
+    },
 };
 
 #[derive(Copy, Clone, Debug)]
 struct CallFrame {
     base_pointer: usize,
-    return_addr: usize
+    return_addr: usize,
 }
 
 struct VM<'src, Stderr, Stdout> {
@@ -55,7 +58,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         debug_assert!(!chunk.instructions.is_empty());
         Self {
-            callframe: vec![CallFrame { base_pointer: 0, return_addr: 0 }],
+            callframe: vec![CallFrame {
+                base_pointer: 0,
+                return_addr: 0,
+            }],
             ip: 0,
             chunk,
             source,
@@ -259,10 +265,19 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         };
         if function.arity != arg_count {
             let span = self.get_span(-2..0);
-            self.runtime_error(span, format!("Function {} expects {} arguments, but got {}", function.name, function.arity, arg_count));
+            self.runtime_error(
+                span,
+                format!(
+                    "Function {} expects {} arguments, but got {}",
+                    function.name, function.arity, arg_count
+                ),
+            );
             return Err(InterpretError::RuntimeError);
         }
-        self.callframe.push(CallFrame { base_pointer: self.stack.len() - arg_count as usize, return_addr: self.ip });
+        self.callframe.push(CallFrame {
+            base_pointer: self.stack.len() - arg_count as usize,
+            return_addr: self.ip,
+        });
         self.ip = function.addr;
         Ok(())
     }

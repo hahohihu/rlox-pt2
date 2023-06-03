@@ -544,7 +544,11 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                     self.check_semicolon(token.span)?;
                     value
                 };
-                Ok(Statement::Return { span: token.span, value }.spanned())
+                Ok(Statement::Return {
+                    span: token.span,
+                    value,
+                }
+                .spanned())
             }
             Token::LBrace => {
                 let block = self.block()?;

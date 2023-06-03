@@ -292,18 +292,16 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     }
 
     fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {
-        let FunctionDeclaration {
-            name,
-            args,
-            body,
-        } = declaration;
+        let FunctionDeclaration { name, args, body } = declaration;
         // Todo: mark function name as local so it can be used recursively
 
         // We aren't making separate chunks to keep everything in the same allocation
         // So skip the function
         let skip = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
 
-        self.static_call_stack.push(StaticCallFrame { base_pointer: self.defined_locals.len() });
+        self.static_call_stack.push(StaticCallFrame {
+            base_pointer: self.defined_locals.len(),
+        });
 
         self.begin_scope(); // fyi: if we ever add recovery, this may break
 
@@ -400,7 +398,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
                 } else {
                     self.chunk.emit_return();
                 }
-            },
+            }
             Statement::FunctionDeclaration(declaration) => {
                 self.function_declaration(declaration)?
             }

@@ -81,7 +81,6 @@ impl TryFrom<Object> for ObjFunction {
     }
 }
 
-
 // ==================================================== Internals below here
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -125,7 +124,6 @@ impl TryFrom<ObjectKind> for ObjFunction {
     }
 }
 
-
 impl ObjectKind {
     fn typename(self) -> &'static str {
         match self {
@@ -141,14 +139,14 @@ impl ObjectKind {
     unsafe fn assume_string(self) -> UnsafeString {
         match self {
             Self::String { str } => str,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     unsafe fn free(self) {
         match self {
             Self::String { str } => str.free(),
-            Self::Function { fun } => fun.free()
+            Self::Function { fun } => fun.free(),
         }
     }
 }
