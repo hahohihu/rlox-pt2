@@ -232,7 +232,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn ip_offset(&self) -> usize {
         self.ip
     }
-
+    
+    #[cfg(feature = "verbose_vm")]
     fn show_debug_trace(&self) {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
