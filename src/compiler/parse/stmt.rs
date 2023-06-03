@@ -1,6 +1,6 @@
 use crate::common::ui::{Span, Spanned};
 
-use super::{Statement, Statements};
+use super::{FunctionDeclaration, Statement, Statements};
 
 impl Statement {
     pub fn spanned(self) -> Spanned<Self> {
@@ -14,6 +14,11 @@ impl Statement {
                 }
                 span
             }
+            Statement::FunctionDeclaration(FunctionDeclaration {
+                name,
+                args: _,
+                body,
+            }) => name.span.unite(body.span),
             Statement::Block(block) => block.span,
             Statement::IfElse {
                 cond,

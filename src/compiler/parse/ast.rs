@@ -41,6 +41,12 @@ pub struct BinaryExpr {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct Call {
+    pub callee: Node<Expression>,
+    pub args: Vec<Spanned<Expression>>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Assignment {
         id: Spanned<Identifier>,
@@ -53,10 +59,19 @@ pub enum Expression {
     },
     Literal(Spanned<Literal>),
     Identifier(Spanned<Identifier>),
+    Call(Call),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Statements(pub Vec<Spanned<Statement>>);
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDeclaration {
+    pub name: Spanned<String>,
+    pub args: Vec<Spanned<String>>,
+    pub body: Spanned<Statements>,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Expr(Spanned<Expression>),
@@ -65,6 +80,7 @@ pub enum Statement {
         id: Spanned<Identifier>,
         rhs: Option<Spanned<Expression>>,
     },
+    FunctionDeclaration(FunctionDeclaration),
     Block(Spanned<Statements>),
     IfElse {
         cond: Spanned<Expression>,

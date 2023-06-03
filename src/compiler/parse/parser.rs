@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::iter::Peekable;
 
+use crate::compiler::parse::FunctionDeclaration;
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
 use crate::repr::interner::InternedU8;
@@ -12,6 +13,7 @@ use super::lex::Lexer;
 use super::lex::Token;
 use super::BinaryExpr;
 use super::BinaryKind;
+use super::Call;
 use super::Expression;
 use super::Literal;
 use super::Precedence;
@@ -158,13 +160,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         }
     }
 
-    fn expect_identifier(&mut self) -> ParseResult<Span> {
+    fn expect(&mut self, expected: Token, expected_msg: &'static str) -> ParseResult<Span> {
         let token = self.pop()?;
-        if token.data == Token::Ident {
+        if token.data == expected {
             Ok(token.span)
         } else {
             Err(ParseError::ExpectError {
-                expected: "identifier",
+                expected: expected_msg,
                 got: token.span,
             })
         }
@@ -299,6 +301,40 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         })
     }
 
+    fn argument_list(&mut self) -> ParseResult<Vec<Spanned<Expression>>> {
+        let lparen_span = self.expect(Token::LParen, "(")?;
+
+        let mut args = vec![];
+        let ident = self.peek()?;
+        if ident.data != Token::RParen {
+            args.push(self.expression(false)?);
+            while self.peek()?.data == Token::Comma {
+                self.pop().unwrap();
+                args.push(self.expression(false)?);
+            }
+        }
+
+        let rparen = self.pop()?;
+        if rparen.data != Token::RParen {
+            self.mismatched_pair(
+                lparen_span,
+                "This ( must be terminated",
+                rparen.span,
+                "Expected )",
+            );
+            return Err(ParseError::Handled);
+        }
+
+        if args.len() > u8::MAX as usize {
+            self.simple_error(
+                lparen_span.unite(rparen.span),
+                "Cannot have more than 255 arguments",
+            );
+            return Err(ParseError::Handled);
+        }
+        Ok(args)
+    }
+
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
     fn expression_bp(
@@ -309,6 +345,19 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let mut lhs = self.primary(can_assign)?;
         loop {
             let operation = self.peek()?;
+
+            match operation.data {
+                Token::LParen => {
+                    let args = self.argument_list()?;
+                    lhs = Expression::Call(Call {
+                        callee: lhs.boxed(),
+                        args,
+                    })
+                    .spanned();
+                    continue;
+                }
+                _ => {}
+            }
 
             let Ok(kind) = BinaryKind::try_from(operation.data) else {
                 break;
@@ -387,7 +436,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let var = self.pop().unwrap();
         debug_assert_eq!(var.data, Token::Var);
 
-        let namespan = self.expect_identifier()?;
+        let namespan = self.expect(Token::Ident, "identifier")?;
 
         let rhs = if self.matches(Token::Eq).is_some() {
             Some(self.expression(true)?)
@@ -426,10 +475,63 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         .spanned())
     }
 
+    fn parameter_list(&mut self) -> ParseResult<Vec<Spanned<String>>> {
+        let lparen_span = self.expect(Token::LParen, "(")?;
+
+        let mut args = vec![];
+        let ident = self.peek()?;
+        if ident.data == Token::Ident {
+            self.pop().unwrap();
+            args.push(String::from(&self.source[ident.span]).with_span(ident.span));
+            while self.peek()?.data == Token::Comma {
+                self.pop().unwrap();
+                let ident = self.expect(Token::Ident, "identifier")?;
+                args.push(String::from(&self.source[ident]).with_span(ident));
+            }
+        }
+
+        let rparen = self.pop()?;
+        if rparen.data != Token::RParen {
+            self.mismatched_pair(
+                lparen_span,
+                "This ( must be terminated",
+                rparen.span,
+                "Expected )",
+            );
+            return Err(ParseError::Handled);
+        }
+
+        if args.len() > u8::MAX as usize {
+            self.simple_error(
+                lparen_span.unite(rparen.span),
+                "Cannot have more than 255 parameters",
+            );
+            return Err(ParseError::Handled);
+        }
+        Ok(args)
+    }
+
+    fn function_declaration(&mut self) -> ParseResult<Spanned<Statement>> {
+        let fun_token = self.pop().unwrap();
+        debug_assert_eq!(fun_token.data, Token::Fun);
+
+        let name = self.expect(Token::Ident, "identifier")?;
+        let args = self.parameter_list()?;
+        let body = self.block()?;
+
+        Ok(Statement::FunctionDeclaration(FunctionDeclaration {
+            name: String::from(&self.source[name]).with_span(name),
+            args,
+            body,
+        })
+        .spanned())
+    }
+
     fn declaration(&mut self) -> ParseResult<Spanned<Statement>> {
         let token = self.peek()?;
         match token.data {
             Token::If => self.if_statement(),
+            Token::Fun => self.function_declaration(),
             Token::Var => self.var_declaration(),
             Token::While => self.while_loop(),
             Token::For => self.for_loop(),

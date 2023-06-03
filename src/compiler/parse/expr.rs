@@ -9,6 +9,13 @@ impl Expression {
             Expression::Binary(BinaryExpr { kind, lhs, rhs }) => {
                 Span::unite_many(&[kind.span, lhs.span, rhs.span])
             }
+            Expression::Call(Call { callee, args }) => {
+                if let Some(arg) = args.last() {
+                    callee.span.unite(arg.span)
+                } else {
+                    callee.span
+                }
+            }
             Expression::Unary { kind, val } => kind.span.unite(val.span),
             Expression::Literal(lit) => lit.span,
             Expression::Identifier(id) => id.span,

@@ -12,14 +12,20 @@ use crate::common::ui::*;
 
 use super::parse::BinaryExpr;
 use super::parse::BinaryKind;
+use super::parse::Call;
 use super::parse::Expression;
+use super::parse::FunctionDeclaration;
 use super::parse::Literal;
 use super::parse::Statement;
 use super::parse::Statements;
 use super::parse::UnaryKind;
 
+struct CallFrame {
+    base_pointer: u8,
+}
+
 type LocalSymbol = InternedU8;
-struct Parser<'src, StdErr: Write> {
+struct Compiler<'src, StdErr: Write> {
     chunk: Chunk,
     source: &'src str,
     stderr: StdErr,
@@ -71,7 +77,7 @@ impl Chunk {
     }
 }
 
-impl<'src, StdErr: Write> Parser<'src, StdErr> {
+impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn new(source: &'src str, stderr: StdErr) -> Self {
         Self {
             chunk: Chunk::new(),
@@ -245,6 +251,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 };
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
             }
+            Expression::Call(call) => self.function_call(call)?,
         }
         Ok(())
     }
@@ -261,6 +268,19 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let res = self.block(stmts);
         self.end_scope();
         res
+    }
+
+    fn function_call(&mut self, _call: &Call) -> CodegenResult<()> {
+        todo!()
+    }
+
+    fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {
+        let FunctionDeclaration {
+            name: _,
+            args: _,
+            body: _,
+        } = declaration;
+        todo!()
     }
 
     fn statement(&mut self, statement: &Statement) -> CodegenResult<()> {
@@ -319,6 +339,9 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 self.chunk.emit_impl_byte(OpCode::Pop);
             }
             Statement::Return { span: _, value: _ } => todo!(),
+            Statement::FunctionDeclaration(declaration) => {
+                self.function_declaration(declaration)?
+            }
         }
         Ok(())
     }
@@ -333,6 +356,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 }
 
 pub fn generate(source: &str, stderr: impl Write, ast: &Statements) -> CodegenResult<Chunk> {
-    let compiler = Parser::new(source, stderr);
+    let compiler = Compiler::new(source, stderr);
     compiler.top(ast)
 }
