@@ -133,7 +133,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     fn pop(&mut self) -> ParseResult<Spanned<Token>> {
         match self.lexer.next() {
             Some(Ok(t)) => {
-                trace!("popping '{}'", &self.source[t.span]);
+                trace!("popping {:?} - '{}'", t.data, &self.source[t.span]);
                 Ok(t)
             }
             Some(Err(t)) => Err(ParseError::InvalidToken(t)),
@@ -535,6 +535,17 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Var => self.var_declaration(),
             Token::While => self.while_loop(),
             Token::For => self.for_loop(),
+            Token::Return => {
+                self.pop().unwrap();
+                let value = if self.matches(Token::Semicolon).is_some() {
+                    None
+                } else {
+                    let value = Some(self.expression(false)?);
+                    self.check_semicolon(token.span)?;
+                    value
+                };
+                Ok(Statement::Return { span: token.span, value }.spanned())
+            }
             Token::LBrace => {
                 let block = self.block()?;
                 Ok(Statement::Block(block).spanned())

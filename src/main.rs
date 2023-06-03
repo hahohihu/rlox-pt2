@@ -757,4 +757,100 @@ mod test_runtime {
         foo();
         "
     }
+
+    snap! {
+        early_return,
+        "
+        fun foo() {
+            print 1;
+            return;
+            print 2;
+        }
+        foo();
+        "
+    }
+
+    snap! {
+        return_value,
+        "
+        fun foo() {
+            return 1;
+        }
+
+        print foo();
+        "
+    }
+
+    snap! {
+        return_function,
+        "
+        fun foo() {
+            fun bar() {
+                return 1;
+            }
+            return bar;
+        }
+
+        print foo()();
+        "
+    }
+
+    snap! {
+        return_function_with_args,
+        "
+        fun foo() {
+            fun bar(a) {
+                return a;
+            }
+            return bar;
+        }
+
+        print foo()(1);
+        "
+    }
+
+    snap! {
+        functions_and_global_state,
+        "
+        var cond = true;
+        fun foo() {
+            fun id(a) {
+                return a;
+            }
+            fun show(a) {
+                print a;
+            }
+            if cond {
+                return show;
+            } else {
+                return id;
+            }
+        }
+
+        print foo()(2);
+        print 3;
+        cond = false;
+        print foo()(1);
+        "
+    }
+
+    snap! {
+        non_returning_end,
+        "
+        fun foo() {
+            if false {
+                return 1;
+            }
+        }
+
+        print foo();
+        "
+    }
+
+    snap! { // intentionally deviates - no harm in allowing this
+        top_level_return,
+        "
+        return 1;
+        "
+    }
 }

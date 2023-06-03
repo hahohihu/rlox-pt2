@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        fun foo() {\n            print 1;\n            return;\n            print 2;\n        }\n        foo();\n        \")"
+---
+stdout:
+1
+
+
+stderr:
+
+

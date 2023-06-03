@@ -1,0 +1,10 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        return 1;\n        \")"
+---
+stdout:
+
+
+stderr:
+
+

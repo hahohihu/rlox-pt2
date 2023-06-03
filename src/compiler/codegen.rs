@@ -393,7 +393,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
                 self.patch_jump(exit, cond.span)?;
                 self.chunk.emit_impl_byte(OpCode::Pop);
             }
-            Statement::Return { span: _, value: _ } => todo!(),
+            Statement::Return { span, value } => {
+                if let Some(value) = value {
+                    self.expression(&value.data)?;
+                    self.chunk.emit_byte(OpCode::Return, *span);
+                } else {
+                    self.chunk.emit_return();
+                }
+            },
             Statement::FunctionDeclaration(declaration) => {
                 self.function_declaration(declaration)?
             }

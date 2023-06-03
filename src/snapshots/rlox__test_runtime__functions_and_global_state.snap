@@ -1,0 +1,14 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        var cond = true;\n        fun foo() {\n            fun id(a) {\n                return a;\n            }\n            fun show(a) {\n                print a;\n            }\n            if cond {\n                return show;\n            } else {\n                return id;\n            }\n        }\n\n        print foo()(2);\n        print 3;\n        cond = false;\n        print foo()(1);\n        \")"
+---
+stdout:
+2
+nil
+3
+1
+
+
+stderr:
+
+

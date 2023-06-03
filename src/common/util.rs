@@ -24,6 +24,7 @@ pub fn setup_test() {
 
 #[cfg(test)]
 pub fn mock_interpret(source: &str) -> String {
+    setup_test();
     let mut stderr = vec![];
     let mut stdout = vec![];
     let _ = crate::interpret(source, &mut stderr, &mut stdout);
