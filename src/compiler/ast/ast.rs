@@ -1,7 +1,5 @@
 use crate::common::ui::{Span, Spanned};
 
-mod sexpr;
-
 pub type Identifier = String;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
