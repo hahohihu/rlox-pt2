@@ -1,2 +1,3 @@
-mod ast;
+mod tree;
 mod sexpr;
+pub use tree::*;
