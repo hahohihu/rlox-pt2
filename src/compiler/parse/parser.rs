@@ -4,7 +4,6 @@ use std::iter::Peekable;
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
 use crate::repr::interner::InternedU8;
-use crate::repr::interner::Interner;
 
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
