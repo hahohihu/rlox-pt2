@@ -3,28 +3,23 @@ use crate::common::ui::{Span, Spanned};
 use super::ast::*;
 
 impl Expression {
-    pub fn boxed(self) -> Box<Self> {
-        Box::new(self)
-    }
-
     pub fn spanned(self) -> Spanned<Self> {
         let span = match &self {
             Expression::Assignment { id, rhs } => id.span.unite(rhs.span),
-            Expression::Binary(BinaryExpr { kind, lhs, rhs }) => Span::unite_many(&[kind.span, lhs.span, rhs.span]),
+            Expression::Binary(BinaryExpr { kind, lhs, rhs }) => {
+                Span::unite_many(&[kind.span, lhs.span, rhs.span])
+            }
             Expression::Unary { kind, val } => kind.span.unite(val.span),
             Expression::Literal(lit) => lit.span,
             Expression::Identifier(id) => id.span,
         };
-        Spanned {
-            data: self,
-            span
-        }
+        Spanned { data: self, span }
     }
 
     pub fn literal<T: Into<Literal>>(span: Span, data: T) -> Self {
         Expression::Literal(Spanned {
             data: data.into(),
-            span
+            span,
         })
     }
 }

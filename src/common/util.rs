@@ -1,5 +1,3 @@
-
-
 #[macro_export]
 macro_rules! noop {
     ($($tt:tt)*) => {};
@@ -79,5 +77,5 @@ macro_rules! snap_success {
     ($name:ident, $input: literal) => {
         $crate::snap!($name, $input);
         $crate::parse!($name, $input);
-    }
+    };
 }

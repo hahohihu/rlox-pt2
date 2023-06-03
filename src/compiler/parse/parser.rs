@@ -9,6 +9,8 @@ use crate::repr::interner::Interner;
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
+use super::lex::Lexer;
+use super::lex::Token;
 use super::BinaryExpr;
 use super::BinaryKind;
 use super::Expression;
@@ -17,8 +19,6 @@ use super::Precedence;
 use super::Statement;
 use super::Statements;
 use super::UnaryKind;
-use super::lex::Lexer;
-use super::lex::Token;
 
 use crate::common::ui;
 use crate::common::ui::*;
@@ -28,9 +28,6 @@ struct Parser<'src, StdErr: Write> {
     lexer: Peekable<Lexer<'src>>,
     source: &'src str,
     stderr: StdErr,
-    interned_locals: Interner,
-    defined_locals: Vec<LocalSymbol>,
-    scope_size: Vec<LocalSymbol>,
 }
 
 #[derive(Debug)]
@@ -73,9 +70,6 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             lexer,
             source,
             stderr,
-            interned_locals: Interner::default(),
-            defined_locals: Default::default(),
-            scope_size: Default::default(),
         }
     }
 
@@ -196,7 +190,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Ok(Expression::Assignment {
                 id,
                 rhs: rhs.boxed(),
-            }.spanned())
+            }
+            .spanned())
         } else {
             Ok(Expression::Identifier(id).spanned())
         }
@@ -210,11 +205,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::Minus => Ok(Expression::Unary {
                 kind: UnaryKind::Neg.with_span(token.span),
                 val: self.primary(false)?.boxed(),
-            }.spanned()),
+            }
+            .spanned()),
             Token::Bang => Ok(Expression::Unary {
                 kind: UnaryKind::Not.with_span(token.span),
                 val: self.primary(false)?.boxed(),
-            }.spanned()),
+            }
+            .spanned()),
             Token::LParen => {
                 let val = self.expression(true)?;
                 let next = self.pop()?;
@@ -243,12 +240,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 Ok(Expression::literal(token.span, str.to_owned()).spanned())
             }
             Token::Ident => self.variable_access_or_assignment(token.span, can_assign),
-            _ => {
-                Err(ParseError::ExpectError {
-                    expected: "primary",
-                    got: token.span,
-                })
-            }
+            _ => Err(ParseError::ExpectError {
+                expected: "primary",
+                got: token.span,
+            }),
         }
     }
 
@@ -307,7 +302,11 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     /// ensures: Ok(_) ==> Exactly one additional value on the stack
     #[cfg_attr(feature = "instrument", tracing::instrument(skip(self, chunk)))]
-    fn expression_bp(&mut self, min: Precedence, mut can_assign: bool) -> ParseResult<Spanned<Expression>> {
+    fn expression_bp(
+        &mut self,
+        min: Precedence,
+        mut can_assign: bool,
+    ) -> ParseResult<Spanned<Expression>> {
         let mut lhs = self.primary(can_assign)?;
         loop {
             let operation = self.peek()?;
@@ -324,13 +323,12 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             can_assign = prec <= Precedence::Assignment;
 
             let rhs = self.expression_bp(prec, can_assign)?;
-            lhs = Expression::Binary(
-                BinaryExpr {
-                    kind: kind.with_span(operation.span),
-                    lhs: lhs.boxed(),
-                    rhs: rhs.boxed(),
-                }
-            ).spanned()
+            lhs = Expression::Binary(BinaryExpr {
+                kind: kind.with_span(operation.span),
+                lhs: lhs.boxed(),
+                rhs: rhs.boxed(),
+            })
+            .spanned()
         }
         Ok(lhs)
     }
@@ -415,7 +413,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
         let then_branch = self.block()?;
 
-        let else_branch = if let Some(else_token) = self.matches(Token::Else) {
+        let else_branch = if let Some(_else_token) = self.matches(Token::Else) {
             Some(self.block()?)
         } else {
             None
@@ -425,7 +423,8 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             cond,
             then_branch,
             else_branch,
-        }.spanned())
+        }
+        .spanned())
     }
 
     fn declaration(&mut self) -> ParseResult<Spanned<Statement>> {
@@ -438,7 +437,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
             Token::LBrace => {
                 let block = self.block()?;
                 Ok(Statement::Block(block).spanned())
-            },
+            }
             Token::Print => self.print_statement(),
             _ => self.expression_statement(),
         }

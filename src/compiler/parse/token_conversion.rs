@@ -19,7 +19,7 @@ impl TryFrom<Token> for BinaryKind {
             Token::LessEq => Ok(BinaryKind::LessThanEqual),
             Token::And => Ok(BinaryKind::And),
             Token::Or => Ok(BinaryKind::Or),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

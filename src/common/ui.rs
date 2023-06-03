@@ -1,4 +1,4 @@
-use std::{ops::Index, fmt::Display};
+use std::{fmt::Display, ops::Index};
 
 use tracing::warn;
 
@@ -102,10 +102,7 @@ pub trait WithSpanExt: Sized {
 
 impl<T> WithSpanExt for T {
     fn with_span(self, span: Span) -> Spanned<Self> {
-        Spanned {
-            data: self,
-            span
-        }
+        Spanned { data: self, span }
     }
 }
 

@@ -47,7 +47,9 @@ impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::Assignment { id, rhs } => write!(f, "(set {} {})", id.data, rhs.data),
-            Expression::Binary(BinaryExpr { kind, lhs, rhs }) => write!(f, "({} {} {})", kind.data, lhs.data, rhs.data),
+            Expression::Binary(BinaryExpr { kind, lhs, rhs }) => {
+                write!(f, "({} {} {})", kind.data, lhs.data, rhs.data)
+            }
             Expression::Unary { kind, val } => write!(f, "({} {})", kind.data, val.data),
             Expression::Literal(lit) => lit.data.fmt(f),
             Expression::Identifier(id) => id.data.fmt(f),
@@ -66,7 +68,7 @@ impl Display for Statement {
                     write!(f, " {}", rhs.data)?;
                 }
                 ")".fmt(f)
-            },
+            }
             Statement::Block(body) => body.data.fmt(f),
             Statement::IfElse {
                 cond,
@@ -81,14 +83,14 @@ impl Display for Statement {
             }
             Statement::While { cond, body } => {
                 write!(f, "(while {} {})", cond.data, body)
-            },
-            Statement::Return { span, value } => {
+            }
+            Statement::Return { span: _, value } => {
                 write!(f, "(return")?;
                 if let Some(value) = value {
                     write!(f, " {}", value.data)?;
                 }
                 ")".fmt(f)
-            },
+            }
         }
     }
 }

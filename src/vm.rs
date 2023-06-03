@@ -1,9 +1,4 @@
-use std::{
-    io::Write,
-    mem::{size_of, transmute},
-    ops::Range,
-    ptr::{read_unaligned, NonNull},
-};
+use std::{io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -59,9 +54,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         debug_assert!(!chunk.instructions.is_empty());
         Self {
-            callframe: vec![CallFrame {
-                base_pointer: 0
-            }],
+            callframe: vec![CallFrame { base_pointer: 0 }],
             ip: 0,
             chunk,
             source,
@@ -232,7 +225,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn ip_offset(&self) -> usize {
         self.ip
     }
-    
+
     #[cfg(feature = "verbose_vm")]
     fn show_debug_trace(&self) {
         self.chunk
@@ -306,11 +299,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::SetLocal => {
                     let slot = self.next_byte();
-                    self.stack[callframe.base_pointer + slot as usize] = *self.stack.last().unwrap();
+                    self.stack[callframe.base_pointer + slot as usize] =
+                        *self.stack.last().unwrap();
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.stack.push(self.stack[callframe.base_pointer + slot as usize]);
+                    self.stack
+                        .push(self.stack[callframe.base_pointer + slot as usize]);
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();

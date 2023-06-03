@@ -1,8 +1,8 @@
-use std::io::Write;
 use crate::repr::chunk::Chunk;
+use std::io::Write;
 
-mod parse;
 mod codegen;
+mod parse;
 
 pub use parse::parse;
 

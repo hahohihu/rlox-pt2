@@ -1,4 +1,4 @@
-use crate::common::ui::{Spanned, Span};
+use crate::common::ui::{Span, Spanned};
 
 use super::{Statement, Statements};
 
@@ -13,15 +13,19 @@ impl Statement {
                     span = span.unite(rhs.span);
                 }
                 span
-            },
+            }
             Statement::Block(block) => block.span,
-            Statement::IfElse { cond, then_branch, else_branch } => {
+            Statement::IfElse {
+                cond,
+                then_branch,
+                else_branch,
+            } => {
                 let mut span = cond.span.unite(then_branch.span);
                 if let Some(else_branch) = else_branch {
                     span = span.unite(else_branch.span);
                 }
                 span
-            },
+            }
             Statement::While { cond, body } => cond.span.unite(body.span),
             Statement::Return { span, value } => {
                 let mut span = *span;
@@ -29,12 +33,9 @@ impl Statement {
                     span = span.unite(value.span);
                 }
                 span
-            },
+            }
         };
-        Spanned {
-            data: self,
-            span
-        }
+        Spanned { data: self, span }
     }
 }
 
@@ -49,9 +50,6 @@ impl Statements {
         } else {
             Span::from(0..0)
         };
-        Spanned {
-            data: self,
-            span
-        }
+        Spanned { data: self, span }
     }
 }

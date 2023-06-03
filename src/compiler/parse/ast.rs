@@ -37,7 +37,7 @@ pub enum Literal {
 pub struct BinaryExpr {
     pub kind: Spanned<BinaryKind>,
     pub lhs: Node<Expression>,
-    pub rhs: Node<Expression>
+    pub rhs: Node<Expression>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,4 +1,3 @@
-use std::fmt::Binary;
 use std::io::Write;
 
 use crate::repr::interner::InternedU8;
@@ -215,12 +214,10 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     fn expression(&mut self, expression: &Expression) -> CodegenResult<()> {
         match expression {
-            Expression::Binary(bin@BinaryExpr { kind, .. }) => {
-                match kind.data {
-                    BinaryKind::And => self.and_expr(bin)?,
-                    BinaryKind::Or => self.or_expr(bin)?,
-                    _ => self.binary_op(bin)?
-                }
+            Expression::Binary(bin @ BinaryExpr { kind, .. }) => match kind.data {
+                BinaryKind::And => self.and_expr(bin)?,
+                BinaryKind::Or => self.or_expr(bin)?,
+                _ => self.binary_op(bin)?,
             },
             Expression::Unary { kind, val } => {
                 self.expression(&val.data)?;
@@ -239,7 +236,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 };
                 self.expression(&rhs.data)?;
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
-            },
+            }
             Expression::Identifier(id) => {
                 let (opcode, follow_byte) = if let Some(pos) = self.resolve_local(&id.data) {
                     (OpCode::GetLocal, pos)
@@ -247,7 +244,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                     (OpCode::GetGlobal, self.chunk.globals.add_or_get(&id.data))
                 };
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
-            },
+            }
         }
         Ok(())
     }
@@ -321,7 +318,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
                 self.patch_jump(exit, cond.span)?;
                 self.chunk.emit_impl_byte(OpCode::Pop);
             }
-            Statement::Return { span, value } => todo!(),
+            Statement::Return { span: _, value: _ } => todo!(),
         }
         Ok(())
     }
