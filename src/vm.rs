@@ -232,7 +232,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
         println!("==== STACK ====");
-        let stack_len = self.stack.len().saturating_sub(8);
+        let stack_len = self.callframe.last().unwrap().base_pointer;
         for value in &self.stack[stack_len..] {
             println!("{value}");
         }
@@ -262,7 +262,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             self.runtime_error(span, format!("Function {} expects {} arguments, but got {}", function.name, function.arity, arg_count));
             return Err(InterpretError::RuntimeError);
         }
-        self.callframe.push(CallFrame { base_pointer: self.stack.len(), return_addr: self.ip });
+        self.callframe.push(CallFrame { base_pointer: self.stack.len() - arg_count as usize, return_addr: self.ip });
         self.ip = function.addr;
         Ok(())
     }
@@ -271,10 +271,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
-        let callframe = *self.callframe.last().unwrap();
         loop {
             #[cfg(feature = "verbose_vm")]
             self.show_debug_trace();
+            let callframe = *self.callframe.last().unwrap();
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {

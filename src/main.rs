@@ -685,4 +685,76 @@ mod test_runtime {
         hello_world();
         "#
     }
+
+    snap! {
+        function_call_args,
+        "
+        fun show(n) {
+            print n;
+        }
+
+        show(1);
+        "
+    }
+
+    snap! {
+        many_args_function,
+        "
+        fun show(a, b, c) {
+            print a;
+            print b;
+            print c;
+        }
+
+        show(1, 2, 3);
+        "
+    }
+
+    snap! {
+        scoped_function,
+        r#"
+        {
+            fun foo() {
+                print "foo";
+            }
+            foo();
+        }
+        "#
+    }
+
+    snap! {
+        scoped_function_args,
+        r#"
+        {
+            fun show(a, b) {
+                print a;
+                print b;
+            }
+            show(1, 2);
+        }
+        "#
+    }
+
+    snap! {
+        function_out_of_scope,
+        "
+        {
+            fun foo() {}
+        }
+        foo();
+        "
+    }
+
+    snap! {
+        nested_function,
+        "
+        fun foo() {
+            fun bar() {
+                print 1;
+            }
+            bar();
+        }
+        foo();
+        "
+    }
 }

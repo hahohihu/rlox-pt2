@@ -117,7 +117,7 @@ impl Chunk {
 
     fn byte_instruction(&self, name: &str, offset: &mut usize, mut stdout: impl Write) {
         let value = self.instructions[*offset + 1];
-        writeln!(stdout, "{name:<16} '{value}'").unwrap();
+        writeln!(stdout, "{name:<16} {value}").unwrap();
         *offset += 2;
     }
 
