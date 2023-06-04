@@ -566,7 +566,49 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 }
 
-pub fn parse(source: &str, output: impl Write) -> ParseResult<Statements> {
-    let parser = Parser::new(source, output);
-    parser.top()
+pub fn parse(source: &str, mut stderr: impl Write) -> Option<Statements> {
+    let parser = Parser::new(source, &mut stderr);
+    let res = parser.top();
+    match res {
+        Ok(ast) => Some(ast),
+        Err(e) => {
+            e.print(stderr, source);
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    pub fn mock_parse(source: &str) -> String {
+        let mut stderr = vec![];
+        let ast = super::parse(source, &mut stderr);
+        let stderr = String::from_utf8(strip_ansi_escapes::strip(stderr).unwrap()).unwrap();
+        if let Some(ast) = ast {
+            format!("stdout:\n{}\n\n{stderr}", ast)
+        } else {
+            format!("stderr:\n{stderr}\n")
+        }
+    }
+
+
+    #[macro_export]
+    macro_rules! parse {
+        ($name:ident, $input:literal) => {
+            #[test]
+            fn $name() {
+                $crate::common::util::assert_snapshot!(mock_parse($input));
+            }
+        };
+    }
+
+    parse! {
+        calls_and_other_operator,
+        "
+        fun foo() {
+            return 1;
+        }
+        print foo() + foo();
+        "
+    }
 }

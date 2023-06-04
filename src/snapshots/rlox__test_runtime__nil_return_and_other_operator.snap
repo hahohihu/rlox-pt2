@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::util::mock_interpret(\"\n        fun ni() {}\n        print ni() or ni();\n        \")"
+---
+stdout:
+nil
+
+
+stderr:
+
+

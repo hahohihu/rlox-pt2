@@ -1,0 +1,25 @@
+---
+source: src/compiler/codegen.rs
+expression: "assemble(\"\n        fun ni() {}\n        print ni() or ni();\n        \")"
+---
+stdout:
+==== test.lox ====
+0000         CONSTANT            0 '<native function clock>'
+0002 |       DEFINE_GLOBAL       0 'clock'
+0004 |       JUMP_REL         2
+0007 |       NIL
+0008 |       RETURN
+0009 ni      CONSTANT            1 '<function ni>'
+0011 |       DEFINE_GLOBAL       1 'ni'
+0013 ni      GET_GLOBAL          1 'ni'
+0015 |       CALL             0
+0017 or      JUMP_REL_IF_TRUE 5
+0020         POP
+0021 ni      GET_GLOBAL          1 'ni'
+0023 |       CALL             0
+0025         PRINT
+0026 |       NIL
+0027 |       RETURN
+
+
+

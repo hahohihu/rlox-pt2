@@ -65,21 +65,22 @@ impl Display for Expression {
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Expr(expr) => expr.data.fmt(f),
-            Statement::Print(expr) => expr.data.fmt(f),
+            Statement::Expr(expr) => expr.data.fmt(f)?,
+            Statement::Print(expr) => expr.data.fmt(f)?,
             Statement::VarDeclaration { id, rhs } => {
                 write!(f, "(var {}", id.data)?;
                 if let Some(rhs) = rhs {
                     write!(f, " {}", rhs.data)?;
                 }
-                ")".fmt(f)
+                ")".fmt(f)?;
             }
             Statement::FunctionDeclaration(FunctionDeclaration { name, args, body }) => {
                 write!(f, "(defun {}", name.data)?;
                 fmt_list(args.iter(), f)?;
-                body.data.fmt(f)
+                body.data.fmt(f)?;
+                ")".fmt(f)?;
             }
-            Statement::Block(body) => body.data.fmt(f),
+            Statement::Block(body) => body.data.fmt(f)?,
             Statement::IfElse {
                 cond,
                 then_branch,
@@ -89,19 +90,20 @@ impl Display for Statement {
                 if let Some(branch) = else_branch {
                     branch.fmt(f)?;
                 }
-                ")".fmt(f)
+                ")".fmt(f)?;
             }
             Statement::While { cond, body } => {
-                write!(f, "(while {} {})", cond.data, body)
+                write!(f, "(while {} {})", cond.data, body)?;
             }
             Statement::Return { span: _, value } => {
                 write!(f, "(return")?;
                 if let Some(value) = value {
                     write!(f, " {}", value.data)?;
                 }
-                ")".fmt(f)
+                ")".fmt(f)?;
             }
         }
+        "\n".fmt(f)
     }
 }
 

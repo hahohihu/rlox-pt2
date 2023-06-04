@@ -1,0 +1,28 @@
+---
+source: src/compiler/codegen.rs
+expression: "assemble(\"\n        fun foo() {\n            if false {\n                return 0;\n            }\n        }\n        print foo();\n        \")"
+---
+stdout:
+==== test.lox ====
+0000         CONSTANT            0 '<native function clock>'
+0002 |       DEFINE_GLOBAL       0 'clock'
+0004 |       JUMP_REL         14
+0007 false   FALSE
+0008 |       JUMP_REL_IF_FALSE 7
+0011         POP
+0012 0       CONSTANT            1 '0'
+0014 return  RETURN
+0015         JUMP_REL         1
+0018 |       POP
+0019 |       NIL
+0020 |       RETURN
+0021 foo     CONSTANT            2 '<function foo>'
+0023 |       DEFINE_GLOBAL       1 'foo'
+0025 foo     GET_GLOBAL          1 'foo'
+0027 |       CALL             0
+0029         PRINT
+0030 |       NIL
+0031 |       RETURN
+
+
+

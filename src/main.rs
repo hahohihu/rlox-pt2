@@ -59,7 +59,7 @@ mod test_errors {
 
 #[cfg(test)]
 mod test_runtime {
-    use crate::{snap, snap_success};
+    use crate::{snap};
     snap!(mismatched_add, "print true + 1;");
     snap!(mismatched_sub, "print true - 1;");
     snap!(negate_bool, "print -true;");
@@ -75,7 +75,7 @@ mod test_runtime {
     snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap!(unary, "print -1 - -2 == --1 == true;");
     snap!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
-    snap_success! {precedence, "print 1 * 2 == 4 / 2;"}
+    snap! {precedence, "print 1 * 2 == 4 / 2;"}
 
     snap!(
         falsey,
@@ -910,6 +910,44 @@ mod test_runtime {
         // comment
         print 1; // number
         // comment print 2;
+        "
+    }
+
+    snap! {
+        calls_and_other_operator,
+        "
+        fun foo() {
+            return 1;
+        }
+        print foo() + foo();
+        "
+    }
+
+    snap! {
+        scoped_recursion,
+        "
+        {
+            fun foo(n) {
+                if n == 0 {
+                    return 0;
+                } else {
+                    return 1 + foo(n - 1);
+                }
+            }
+            print foo(1);
+        }
+        "
+    }
+
+    snap! {
+        if_then_nil,
+        "
+        fun foo() {
+            if false {
+                return 0;
+            }
+        }
+        print foo();
         "
     }
 }

@@ -114,6 +114,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn begin_scope(&mut self) {
         self.scope_size.push(0);
     }
+    
+    fn end_function_scope(&mut self) {
+        let size = self.scope_size.pop().unwrap();
+        for _ in 0..size {
+            // The pop opcodes are redundant because return will handle this for functions
+            self.defined_locals.pop().unwrap();
+        }
+    }
 
     fn end_scope(&mut self) {
         let size = self.scope_size.pop().unwrap();
@@ -306,11 +314,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         let skip = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
 
         self.static_call_stack.push(StaticCallFrame {
+            // need to include function itself
             base_pointer: self.defined_locals.len(),
         });
 
         self.begin_scope(); // fyi: if we ever add recovery, this may break
 
+        // mark self so recursive calls work
+        self.add_local(&name.data);
         // callee must initialize the args, this is just to make the offsets work
         for arg in args {
             self.add_local(&arg.data);
@@ -318,7 +329,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
 
         let function_start = self.chunk.instructions.len();
         self.block(&body.data)?;
-        self.end_scope();
+        self.end_function_scope();
         self.static_call_stack.pop().unwrap();
         self.chunk.emit_return();
 
@@ -450,4 +461,78 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
 pub fn generate(source: &str, stderr: impl Write, ast: &Statements) -> CodegenResult<Chunk> {
     let compiler = Compiler::new(source, stderr);
     compiler.top(ast)
+}
+
+#[cfg(test)]
+mod tests {
+    pub fn assemble(source: &str) -> String {
+        let mut stderr = vec![];
+        let chunk = super::super::compile(source, &mut stderr);
+        let stderr = String::from_utf8(strip_ansi_escapes::strip(stderr).unwrap()).unwrap();
+        if let Some(chunk) = chunk {
+            let mut stdout = vec![];
+            chunk.disassemble("test.lox", source, &mut stdout);
+            let stdout = String::from_utf8(strip_ansi_escapes::strip(stdout).unwrap()).unwrap();
+            format!("stdout:\n{stdout}\n\n{stderr}")
+        } else {
+            format!("stderr:\n{stderr}\n")
+        }
+    }
+
+    #[macro_export]
+    macro_rules! codegen {
+        ($name:ident, $input:literal) => {
+            #[test]
+            fn $name() {
+                $crate::common::util::assert_snapshot!(assemble($input));
+            }
+        };
+    }
+
+    codegen! {
+        calls_and_other_operator,
+        "
+        fun foo() {
+            return 1;
+        }
+        print foo() + foo();
+        "
+    }
+
+    codegen! {
+        scoped_recursion,
+        "
+        {
+            fun foo(n) {
+                if n == 0 {
+                    return 0;
+                } else {
+                    return 1 + foo(n - 1);
+                }
+            }
+            print foo(1);
+        }
+        "
+    }
+
+
+    codegen! {
+        nil_return_and_other_operator,
+        "
+        fun ni() {}
+        print ni() or ni();
+        "
+    }
+
+    codegen! {
+        if_then_nil,
+        "
+        fun foo() {
+            if false {
+                return 0;
+            }
+        }
+        print foo();
+        "
+    }
 }

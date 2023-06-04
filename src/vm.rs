@@ -273,7 +273,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             return Err(InterpretError::RuntimeError);
         }
         self.callframe.push(CallFrame {
-            base_pointer: self.stack.len() - arg_count as usize,
+            // -1 to include function itself
+            base_pointer: self.stack.len() - arg_count as usize - 1,
             return_addr: self.ip,
         });
         self.ip = function.addr;
