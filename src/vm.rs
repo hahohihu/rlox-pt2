@@ -306,24 +306,17 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
 
     fn call(&mut self, arg_count: u8) -> InterpretResult {
         let value = self.peek(arg_count.into());
-        // can't capture self so a macro will have to do
-        macro_rules! call_type_error {
-            () => {{
+        match ObjectKind::try_from(value) {
+            Ok(ObjectKind::Function { fun }) => self.function_call(fun, arg_count),
+            Ok(ObjectKind::NativeFunction { fun }) => self.native_function_call(fun, arg_count),
+            _ => {
                 let span = self.get_span(-2..0);
                 self.runtime_error(
                     span,
                     format!("Canot call a value of type {}", value.typename()),
                 );
                 Err(InterpretError::RuntimeError)
-            }};
-        }
-        let Ok(obj) = ObjectKind::try_from(value) else {
-            return call_type_error!();
-        };
-        match obj {
-            ObjectKind::Function { fun } => self.function_call(fun, arg_count),
-            ObjectKind::NativeFunction { fun } => self.native_function_call(fun, arg_count),
-            _ => call_type_error!(),
+            }
         }
     }
 
