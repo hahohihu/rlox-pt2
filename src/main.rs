@@ -59,7 +59,7 @@ mod test_errors {
 
 #[cfg(test)]
 mod test_runtime {
-    use crate::{snap};
+    use crate::snap;
     snap!(mismatched_add, "print true + 1;");
     snap!(mismatched_sub, "print true - 1;");
     snap!(negate_bool, "print -true;");

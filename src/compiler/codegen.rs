@@ -114,7 +114,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn begin_scope(&mut self) {
         self.scope_size.push(0);
     }
-    
+
     fn end_function_scope(&mut self) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
@@ -306,15 +306,12 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
 
     fn function_declaration(&mut self, declaration: &FunctionDeclaration) -> CodegenResult<()> {
         let FunctionDeclaration { name, args, body } = declaration;
-        // Todo: mark function name as local so it can be used recursively
-        // This currently works with globals, but not locals - however, this falls partially under the purview of closures
 
         // We aren't making separate chunks to keep everything in the same allocation
         // So skip the function
         let skip = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
 
         self.static_call_stack.push(StaticCallFrame {
-            // need to include function itself
             base_pointer: self.defined_locals.len(),
         });
 
@@ -342,7 +339,6 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         };
 
         self.chunk.emit_constant(function.into(), name.span);
-        // This is very much incorrect, but is a temporary stopgap to see if we can get non-recursive functions working
         if self.in_global_scope() {
             let nameid = self.chunk.globals.add_or_get(&name.data);
             emit_bytes!(self.chunk, name.span; OpCode::DefineGlobal, nameid);
@@ -430,8 +426,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             }
             let time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs_f64();
+                .map_or(f64::NAN, |n| n.as_secs_f64());
             Ok(Value::Num(time))
         });
         for statement in top.0.iter() {
@@ -514,7 +509,6 @@ mod tests {
         }
         "
     }
-
 
     codegen! {
         nil_return_and_other_operator,
