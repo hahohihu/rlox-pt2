@@ -33,6 +33,8 @@ pub enum OpCode {
     SetGlobal,
     GetLocal,
     SetLocal,
+    GetUpvalue,
+    SetUpvalue,
     // Binary
     Add,
     Sub,
@@ -182,6 +184,8 @@ impl Chunk {
             OpCode::SetGlobal => self.global_instruction("SET_GLOBAL", &mut offset, stdout),
             OpCode::SetLocal => self.byte_instruction("SET_LOCAL", &mut offset, stdout),
             OpCode::GetLocal => self.byte_instruction("GET_LOCAL", &mut offset, stdout),
+            OpCode::SetUpvalue => self.byte_instruction("SET_UPVALUE", &mut offset, stdout),
+            OpCode::GetUpvalue => self.byte_instruction("GET_UPVALUE", &mut offset, stdout),
             OpCode::Call => self.byte_instruction("CALL", &mut offset, stdout),
             OpCode::JumpRelIfFalse => {
                 self.jmp_instruction("JUMP_REL_IF_FALSE", &mut offset, stdout)

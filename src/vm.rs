@@ -414,6 +414,12 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.stack
                         .push(self.stack[callframe.base_pointer + slot as usize]);
                 }
+                OpCode::GetUpvalue => {
+                    todo!()
+                }
+                OpCode::SetUpvalue => {
+                    todo!()
+                }
                 OpCode::Constant => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
