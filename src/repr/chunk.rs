@@ -2,7 +2,7 @@ use std::io::Write;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use super::{interner::Interner, value::Value, try_as::TryAs, function::ObjFunction};
+use super::{function::ObjFunction, interner::Interner, try_as::TryAs, value::Value};
 use crate::common::ui::Span;
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
@@ -148,11 +148,16 @@ impl Chunk {
                 "upvalue"
             };
             let index = self.instructions[*offset + 1];
-            writeln!(stdout, "{:0>4}                               {} {}", *offset, local, index).unwrap();
+            writeln!(
+                stdout,
+                "{:0>4}                               {} {}",
+                *offset, local, index
+            )
+            .unwrap();
             *offset += 2;
         }
     }
-    
+
     pub fn disassemble_instruction(
         &self,
         mut offset: usize,

@@ -31,7 +31,7 @@ use super::parse::UnaryKind;
 
 struct StaticCallFrame {
     base_pointer: usize,
-    upvalues: Vec<Upvalue>
+    upvalues: Vec<Upvalue>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

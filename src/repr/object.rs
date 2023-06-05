@@ -3,6 +3,7 @@ use super::function::{ObjClosure, ObjFunction};
 use super::native_function::NativeFunction;
 
 use super::try_as::TryAs;
+use super::upvalue::ObjUpvalue;
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -75,6 +76,7 @@ pub enum ObjectKind {
     Function { fun: ObjFunction },
     Closure { fun: ObjClosure },
     NativeFunction { fun: NativeFunction },
+    Upvalue { upvalue: ObjUpvalue },
 }
 
 impl Display for ObjectKind {
@@ -84,6 +86,7 @@ impl Display for ObjectKind {
             Self::Function { fun } => fun.fmt(f),
             Self::Closure { fun } => fun.function.fmt(f),
             Self::NativeFunction { fun } => fun.fmt(f),
+            Self::Upvalue { upvalue } => upvalue.fmt(f),
         }
     }
 }
@@ -144,6 +147,7 @@ impl ObjectKind {
             Self::String { .. } => "string",
             Self::Closure { .. } | Self::Function { .. } => "function",
             Self::NativeFunction { .. } => "native-function",
+            Self::Upvalue { .. } => "upvalue",
         }
     }
 
@@ -153,6 +157,7 @@ impl ObjectKind {
             Self::Function { fun } => fun.free(),
             Self::Closure { fun } => fun.free(),
             Self::NativeFunction { fun } => fun.free(),
+            Self::Upvalue { upvalue } => upvalue.free(),
         }
     }
 }

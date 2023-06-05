@@ -7,5 +7,6 @@ pub mod object;
 pub mod scope;
 pub mod string;
 pub mod try_as;
+pub mod upvalue;
 pub mod valid;
 pub mod value;
