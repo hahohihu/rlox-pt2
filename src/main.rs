@@ -123,7 +123,6 @@ mod test_runtime {
         print a;
         "
     );
-    snap_interpret!(declaration_is_not_expression, "var a == 1;");
 
     snap_interpret!(
         assignment,
@@ -133,12 +132,7 @@ mod test_runtime {
         print a;
         "
     );
-    snap_interpret!(
-        invalid_lvalue,
-        "
-        a * b = c + d;
-        "
-    );
+
     snap_interpret!(
         nested_assign,
         "
@@ -262,49 +256,9 @@ mod test_runtime {
     }
 
     snap_interpret! {
-        invalid_declaration,
-        "
-        var a = var b;
-        "
-    }
-
-    snap_interpret! {
-        // todo: this error message could be better
-        unterminated_scope,
-        "
-        {
-            var a = 1;
-            print a;
-        "
-    }
-
-    snap_interpret! {
-        global_declaration_without_identifier,
-        "
-        var 1;
-        "
-    }
-
-    snap_interpret! {
-        local_declaration_without_identifier,
-        "
-        {
-            var 1;
-        }
-        "
-    }
-
-    snap_interpret! {
         set_undeclared_global,
         "
         a = 1;
-        "
-    }
-
-    snap_interpret! {
-        eof_after_variable,
-        "
-        var a
         "
     }
 
@@ -360,12 +314,6 @@ mod test_runtime {
         "
     }
 
-    snap_interpret! {
-        invalid_place,
-        "
-        1 = 1;
-        "
-    }
 
     snap_interpret! {
         basic_if,

@@ -84,3 +84,15 @@ macro_rules! snap_codegen {
         }
     };
 }
+
+
+#[macro_export]
+macro_rules! snap_all {
+    ($name:ident, $input:literal) => {
+        paste::paste! {
+            $crate::snap_parse!([<parse_ $name>], $input);
+            $crate::snap_codegen!([<codegen_ $name>], $input);
+            $crate::snap_interpret!([<interpret_ $name>], $input);
+        }
+    };
+}

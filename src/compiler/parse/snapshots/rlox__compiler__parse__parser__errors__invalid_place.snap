@@ -1,10 +1,7 @@
 ---
-source: src/main.rs
-expression: "crate::common::util::mock_interpret(\"\n        1 = 1;\n        \")"
+source: src/compiler/parse/parser.rs
+expression: "crate::common::test_util::mock_parse(\"\n        1 = 1;\n        \")"
 ---
-stdout:
-
-
 stderr:
 Error: 
    ╭─[<unknown>:2:12]

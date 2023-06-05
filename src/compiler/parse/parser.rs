@@ -603,4 +603,59 @@ mod errors {
     snap_parse!(missing_lhs, "print + 1;\n");
     snap_parse!(invalid_token, "print $;");
     snap_parse!(missing_semicolon, "print 1; x");
+
+    snap_parse! {
+        global_declaration_without_identifier,
+        "
+        var 1;
+        "
+    }
+
+    snap_parse! {
+        local_declaration_without_identifier,
+        "
+        {
+            var 1;
+        }
+        "
+    }
+
+
+    snap_parse! {
+        invalid_declaration,
+        "
+        var a = var b;
+        "
+    }
+    snap_parse!(
+        invalid_lvalue,
+        "
+        a * b = c + d;
+        "
+    );
+    snap_parse!(declaration_is_not_expression, "var a == 1;");
+
+    snap_parse! {
+        // todo: this error message could be better
+        unterminated_scope,
+        "
+        {
+            var a = 1;
+            print a;
+        "
+    }
+
+    snap_parse! {
+        eof_after_variable,
+        "
+        var a
+        "
+    }
+
+    snap_parse! {
+        invalid_place,
+        "
+        1 = 1;
+        "
+    }
 }
