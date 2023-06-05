@@ -40,6 +40,7 @@ impl Object {
         self.inner.as_ref().kind.typename()
     }
 
+    // try_into/try_from doesn't work because of orphan rules
     pub fn try_as<T: TryFrom<ObjectKind>>(self) -> Option<T> {
         self.kind().try_into().ok()
     }
