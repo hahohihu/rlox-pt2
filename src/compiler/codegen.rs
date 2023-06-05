@@ -188,7 +188,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         for window in self.static_call_stack.windows(2).rev() {
             let low_base_pointer = window[0].base_pointer;
             let high_base_pointer = window[1].base_pointer;
-            debug_assert!(low_base_pointer < high_base_pointer);
+            debug_assert!(low_base_pointer <= high_base_pointer);
             if let Some(index) = self.resolve_local(name, low_base_pointer..high_base_pointer) {
                 return Some(self.add_upvalue(Upvalue { local: true, index }));
             }
