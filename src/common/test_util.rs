@@ -85,7 +85,6 @@ macro_rules! snap_codegen {
     };
 }
 
-
 #[macro_export]
 macro_rules! snap_all {
     ($name:ident, $input:literal) => {

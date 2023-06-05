@@ -324,6 +324,12 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
+
+        for i in 0..self.chunk.native_globals.len() {
+            let (id, value) = self.chunk.native_globals[i];
+            self.define_global(id, value);
+        }
+
         loop {
             #[cfg(feature = "verbose_vm")]
             self.show_debug_trace();

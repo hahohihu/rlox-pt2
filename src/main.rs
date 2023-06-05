@@ -314,7 +314,6 @@ mod test_runtime {
         "
     }
 
-
     snap_interpret! {
         basic_if,
         r#"

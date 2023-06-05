@@ -53,6 +53,7 @@ pub struct Chunk {
     constants: Vec<Value>,
     // Owned by this
     pub globals: Interner,
+    pub native_globals: Vec<(u8, Value)>,
 }
 
 impl Drop for Chunk {
@@ -71,6 +72,10 @@ impl Drop for Chunk {
 impl Chunk {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn add_native(&mut self, nameid: u8, value: Value) {
+        self.native_globals.push((nameid, value));
     }
 
     pub fn add_constant(&mut self, value: Value) -> u8 {

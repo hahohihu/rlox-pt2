@@ -620,7 +620,6 @@ mod errors {
         "
     }
 
-
     snap_parse! {
         invalid_declaration,
         "

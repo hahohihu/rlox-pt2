@@ -441,15 +441,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         name: &str,
         function: fn(&[Value]) -> Result<Value, CallError>,
     ) {
-        self.chunk.emit_constant(
+        let nameid = self.chunk.globals.add_or_get(name);
+        self.chunk.add_native(
+            nameid,
             Value::from(NativeFunction {
                 name: UnsafeString::from(name),
                 function,
             }),
-            Chunk::impl_span(),
         );
-        let nameid = self.chunk.globals.add_or_get(name);
-        emit_bytes!(self.chunk, Chunk::impl_span(); OpCode::DefineGlobal, nameid);
     }
 }
 

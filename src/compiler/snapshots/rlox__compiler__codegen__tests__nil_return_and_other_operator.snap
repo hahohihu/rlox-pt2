@@ -4,22 +4,20 @@ expression: "crate::common::test_util::mock_codegen(\"\n        fun ni() {}\n   
 ---
 bytecode:
 ==== test.lox ====
-0000         CONSTANT            0 '<native function clock>'
-0002 |       DEFINE_GLOBAL       0 'clock'
-0004 |       JUMP_REL         2
-0007 |       NIL
-0008 |       RETURN
-0009 ni      CONSTANT            1 '<function ni>'
-0011 |       DEFINE_GLOBAL       1 'ni'
-0013 ni      GET_GLOBAL          1 'ni'
-0015 |       CALL             0
-0017 or      JUMP_REL_IF_TRUE 5
-0020         POP
-0021 ni      GET_GLOBAL          1 'ni'
-0023 |       CALL             0
-0025         PRINT
-0026 |       NIL
-0027 |       RETURN
+0000         JUMP_REL         2
+0003 |       NIL
+0004 |       RETURN
+0005 ni      CONSTANT            0 '<function ni>'
+0007 |       DEFINE_GLOBAL       1 'ni'
+0009 ni      GET_GLOBAL          1 'ni'
+0011 |       CALL             0
+0013 or      JUMP_REL_IF_TRUE 5
+0016         POP
+0017 ni      GET_GLOBAL          1 'ni'
+0019 |       CALL             0
+0021         PRINT
+0022 |       NIL
+0023 |       RETURN
 
 
 

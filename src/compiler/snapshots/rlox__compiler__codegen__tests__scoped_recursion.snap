@@ -4,36 +4,34 @@ expression: "crate::common::test_util::mock_codegen(\"\n        {\n            f
 ---
 bytecode:
 ==== test.lox ====
-0000         CONSTANT            0 '<native function clock>'
-0002 |       DEFINE_GLOBAL       0 'clock'
-0004 |       JUMP_REL         31
-0007 n       GET_LOCAL        1
-0009 0       CONSTANT            1 '0'
-0011 ==      EQUAL
-0012 n == 0  JUMP_REL_IF_FALSE 7
-0015         POP
-0016 0       CONSTANT            2 '0'
-0018 return  RETURN
-0019         JUMP_REL         14
-0022 |       POP
-0023 1       CONSTANT            3 '1'
-0025 foo     GET_LOCAL        0
-0027 n       GET_LOCAL        1
-0029 1       CONSTANT            4 '1'
-0031 -       SUBTRACT
-0032 foo     CALL             1
-0034 +       ADD
-0035 return  RETURN
-0036         NIL
-0037 |       RETURN
-0038 foo     CONSTANT            5 '<function foo>'
-0040 foo     GET_LOCAL        0
-0042 1       CONSTANT            6 '1'
-0044 foo     CALL             1
-0046         PRINT
-0047 |       POP
-0048 |       NIL
-0049 |       RETURN
+0000         JUMP_REL         31
+0003 n       GET_LOCAL        1
+0005 0       CONSTANT            0 '0'
+0007 ==      EQUAL
+0008 n == 0  JUMP_REL_IF_FALSE 7
+0011         POP
+0012 0       CONSTANT            1 '0'
+0014 return  RETURN
+0015         JUMP_REL         14
+0018 |       POP
+0019 1       CONSTANT            2 '1'
+0021 foo     GET_LOCAL        0
+0023 n       GET_LOCAL        1
+0025 1       CONSTANT            3 '1'
+0027 -       SUBTRACT
+0028 foo     CALL             1
+0030 +       ADD
+0031 return  RETURN
+0032         NIL
+0033 |       RETURN
+0034 foo     CONSTANT            4 '<function foo>'
+0036 foo     GET_LOCAL        0
+0038 1       CONSTANT            5 '1'
+0040 foo     CALL             1
+0042         PRINT
+0043 |       POP
+0044 |       NIL
+0045 |       RETURN
 
 
 

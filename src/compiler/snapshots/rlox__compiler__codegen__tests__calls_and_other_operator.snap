@@ -4,23 +4,21 @@ expression: "crate::common::test_util::mock_codegen(\"\n        fun foo() {\n   
 ---
 bytecode:
 ==== test.lox ====
-0000         CONSTANT            0 '<native function clock>'
-0002 |       DEFINE_GLOBAL       0 'clock'
-0004 |       JUMP_REL         5
-0007 1       CONSTANT            1 '1'
-0009 return  RETURN
-0010         NIL
-0011 |       RETURN
-0012 foo     CONSTANT            2 '<function foo>'
-0014 |       DEFINE_GLOBAL       1 'foo'
+0000         JUMP_REL         5
+0003 1       CONSTANT            0 '1'
+0005 return  RETURN
+0006         NIL
+0007 |       RETURN
+0008 foo     CONSTANT            1 '<function foo>'
+0010 |       DEFINE_GLOBAL       1 'foo'
+0012 foo     GET_GLOBAL          1 'foo'
+0014 |       CALL             0
 0016 foo     GET_GLOBAL          1 'foo'
 0018 |       CALL             0
-0020 foo     GET_GLOBAL          1 'foo'
-0022 |       CALL             0
-0024 +       ADD
-0025         PRINT
-0026 |       NIL
-0027 |       RETURN
+0020 +       ADD
+0021         PRINT
+0022 |       NIL
+0023 |       RETURN
 
 
 
