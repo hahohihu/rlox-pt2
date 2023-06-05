@@ -1,0 +1,9 @@
+---
+source: src/compiler/parse/parser.rs
+expression: "crate::common::test_util::mock_parse(\"print 1 / 0;\")"
+---
+ast:
+((print (/ 1 0))
+)
+
+
