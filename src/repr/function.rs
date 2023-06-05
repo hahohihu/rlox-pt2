@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::string::UnsafeString;
+use super::{string::UnsafeString, upvalue::ObjUpvalue, valid::ValidPtr};
 
 #[derive(Copy, Clone, Debug, Eq)]
 pub struct ObjFunction {
@@ -28,11 +28,22 @@ impl ObjFunction {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug)]
 pub struct ObjClosure {
     pub function: ObjFunction,
+    pub upvalues: ValidPtr<[ObjUpvalue]>,
 }
 
+impl PartialEq for ObjClosure {
+    fn eq(&self, other: &Self) -> bool {
+        self.function == other.function && self.upvalues.as_ptr() == other.upvalues.as_ptr()
+    }
+}
+
+impl Eq for ObjClosure {}
+
 impl ObjClosure {
-    pub unsafe fn free(&self) {}
+    pub unsafe fn free(&self) {
+        self.upvalues.free();
+    }
 }

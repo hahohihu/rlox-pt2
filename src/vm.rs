@@ -11,6 +11,8 @@ use crate::{
         function::{ObjClosure, ObjFunction},
         string::UnsafeString,
         try_as::{TryAs, TryCast},
+        upvalue::ObjUpvalue,
+        valid::ValidPtr,
     },
     repr::{
         native_function::CallError,
@@ -23,6 +25,8 @@ use crate::{
 struct CallFrame {
     base_pointer: usize,
     return_addr: usize,
+    // todo: rework top-level execution so that it's within a closure, or make it so that top-level execution has no callframe
+    closure: ObjClosure,
 }
 
 struct VM<'src, Stderr, Stdout> {
@@ -63,10 +67,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn new(chunk: Chunk, source: &'src str, stderr: Stderr, stdout: Stdout) -> Self {
         debug_assert!(!chunk.instructions.is_empty());
         Self {
-            callframe: vec![CallFrame {
-                base_pointer: 0,
-                return_addr: 0,
-            }],
+            callframe: vec![],
             ip: 0,
             chunk,
             source,
@@ -244,12 +245,19 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.ip
     }
 
+    fn base_pointer(&self) -> usize {
+        self.callframe
+            .last()
+            .map(|frame| frame.base_pointer)
+            .unwrap_or(0)
+    }
+
     #[cfg(feature = "verbose_vm")]
     fn show_debug_trace(&self) {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
         println!("==== STACK ====");
-        let stack_len = self.callframe.last().unwrap().base_pointer;
+        let stack_len = self.base_pointer();
         for value in &self.stack[stack_len..] {
             println!("{value}");
         }
@@ -284,6 +292,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             // -1 to include function itself
             base_pointer: self.stack.len() - arg_count as usize - 1,
             return_addr: self.ip,
+            closure,
         });
         self.ip = function.addr;
         Ok(())
@@ -328,6 +337,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
+    fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ObjUpvalue {
+        ObjUpvalue { value }
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
@@ -341,15 +354,14 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         loop {
             #[cfg(feature = "verbose_vm")]
             self.show_debug_trace();
-            let callframe = *self.callframe.last().unwrap();
+            let base_pointer = self.base_pointer();
             let instruction: OpCode = self.next_byte().into();
             match instruction {
                 OpCode::Return => {
-                    let res = self.stack.pop().unwrap();
-                    let callframe = self.callframe.pop().unwrap();
-                    if self.callframe.is_empty() {
+                    let Some(callframe) = self.callframe.pop() else {
                         return Ok(());
-                    }
+                    };
+                    let res = self.stack.pop().unwrap();
                     while self.stack.len() > callframe.base_pointer {
                         self.stack.pop().unwrap();
                     }
@@ -358,7 +370,22 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::Closure => {
                     let function: ObjFunction = self.read_constant().unwrap_as();
-                    let closure = ObjClosure { function };
+                    let mut upvalues = vec![];
+                    for _ in 0..function.upvalues {
+                        let local = self.next_byte() != 0;
+                        let index = self.next_byte();
+                        if local {
+                            todo!();
+                            // might need to use a static array for the stack
+                            // so we can safely get a pointer to it
+                            // upvalues.push()
+                        } else {
+                            let outer = self.callframe.last().unwrap().closure;
+                            upvalues.push(outer.upvalues.as_ref()[index as usize]);
+                        }
+                    }
+                    let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
+                    let closure = ObjClosure { function, upvalues };
                     self.stack.push(closure.into());
                 }
                 OpCode::Call => {
@@ -406,13 +433,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::SetLocal => {
                     let slot = self.next_byte();
-                    self.stack[callframe.base_pointer + slot as usize] =
-                        *self.stack.last().unwrap();
+                    self.stack[base_pointer + slot as usize] = *self.stack.last().unwrap();
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.stack
-                        .push(self.stack[callframe.base_pointer + slot as usize]);
+                    self.stack.push(self.stack[base_pointer + slot as usize]);
                 }
                 OpCode::GetUpvalue => {
                     todo!()
