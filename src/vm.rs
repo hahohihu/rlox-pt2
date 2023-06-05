@@ -8,7 +8,8 @@ use crate::{
     compiler::compile,
     repr::{
         chunk::{Chunk, OpCode},
-        function::ObjClosure,
+        function::{ObjClosure, ObjFunction},
+        string::UnsafeString,
     },
     repr::{
         native_function::CallError,
@@ -199,27 +200,32 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
         match (a, b) {
-            (Value::Num(a), Value::Num(b)) => self.stack.push(Value::Num(a + b)),
-            (Value::Object(a), Value::Object(b)) if a.is_string() && b.is_string() => {
-                let (a, b) = unsafe { (a.assume_string(), b.assume_string()) };
-                let concatenated = Object::from(a + b);
-                self.objects.push(concatenated);
-                self.stack.push(Value::Object(concatenated));
+            (Value::Num(a), Value::Num(b)) => {
+                self.stack.push(Value::Num(a + b));
+                return Ok(());
             }
-            (a, b) => {
-                let span = self.get_span(-2..1);
-                self.runtime_error(
-                    span,
-                    format!(
-                        "Operator '+' takes two numbers. Got a {} ({a}) and a {} ({b}).",
-                        a.typename(),
-                        b.typename()
-                    ),
-                );
-                return Err(InterpretError::RuntimeError);
+            (Value::Object(a), Value::Object(b)) => {
+                let a = a.try_as::<UnsafeString>();
+                let b = b.try_as::<UnsafeString>();
+                if let (Some(a), Some(b)) = (a, b) {
+                    let concatenated = Object::from(a + b);
+                    self.objects.push(concatenated);
+                    self.stack.push(Value::Object(concatenated));
+                    return Ok(());
+                }
             }
+            _ => {}
         }
-        Ok(())
+        let span = self.get_span(-2..1);
+        self.runtime_error(
+            span,
+            format!(
+                "Operator '+' takes two numbers. Got a {} ({a}) and a {} ({b}).",
+                a.typename(),
+                b.typename()
+            ),
+        );
+        Err(InterpretError::RuntimeError)
     }
 
     fn jump(&mut self, offset: isize) {
@@ -307,9 +313,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
 
     fn call(&mut self, arg_count: u8) -> InterpretResult {
         let value = self.peek(arg_count.into());
-        match ObjectKind::try_from(value) {
-            Ok(ObjectKind::Closure { fun }) => self.function_call(fun, arg_count),
-            Ok(ObjectKind::NativeFunction { fun }) => self.native_function_call(fun, arg_count),
+        match value.try_as() {
+            Some(ObjectKind::Closure { fun }) => self.function_call(fun, arg_count),
+            Some(ObjectKind::NativeFunction { fun }) => self.native_function_call(fun, arg_count),
             _ => {
                 let span = self.get_span(-2..0);
                 self.runtime_error(
@@ -350,11 +356,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.ip = callframe.return_addr;
                 }
                 OpCode::Closure => {
-                    let function = unsafe {
-                        ObjectKind::try_from(self.read_constant())
-                            .unwrap()
-                            .assume_function()
-                    };
+                    let function = self.read_constant().try_as::<ObjFunction>().unwrap();
                     let closure = ObjClosure { function };
                     self.stack.push(closure.into());
                 }

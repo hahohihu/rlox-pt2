@@ -40,12 +40,8 @@ impl Object {
         self.inner.as_ref().kind.typename()
     }
 
-    pub fn is_string(self) -> bool {
-        self.inner.as_ref().kind.is_string()
-    }
-
-    pub unsafe fn assume_string(self) -> UnsafeString {
-        self.inner.as_ref().kind.assume_string()
+    pub fn try_as<T: TryFrom<ObjectKind>>(self) -> Option<T> {
+        self.kind().try_into().ok()
     }
 
     pub unsafe fn free(self) {
@@ -118,30 +114,34 @@ impl From<String> for ObjectKind {
     }
 }
 
+impl TryFrom<ObjectKind> for ObjFunction {
+    type Error = ();
+
+    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
+        match value {
+            ObjectKind::Function { fun } => Ok(fun),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<ObjectKind> for UnsafeString {
+    type Error = ();
+
+    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
+        match value {
+            ObjectKind::String { str } => Ok(str),
+            _ => Err(()),
+        }
+    }
+}
+
 impl ObjectKind {
     fn typename(self) -> &'static str {
         match self {
             Self::String { .. } => "string",
             Self::Closure { .. } | Self::Function { .. } => "function",
             Self::NativeFunction { .. } => "native-function",
-        }
-    }
-
-    fn is_string(self) -> bool {
-        matches!(self, ObjectKind::String { .. })
-    }
-
-    unsafe fn assume_string(self) -> UnsafeString {
-        match self {
-            Self::String { str } => str,
-            _ => unreachable!(),
-        }
-    }
-
-    pub unsafe fn assume_function(self) -> ObjFunction {
-        match self {
-            Self::Function { fun } => fun,
-            _ => unreachable!(),
         }
     }
 
