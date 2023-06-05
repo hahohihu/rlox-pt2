@@ -591,3 +591,16 @@ mod tests {
         "
     }
 }
+
+#[cfg(test)]
+mod errors {
+    use crate::snap_parse;
+    snap_parse!(missing_op, "print 1 1;");
+    snap_parse!(missing_primary, "print ();\n");
+    snap_parse!(missing_parens, "print ((1);\n");
+    snap_parse!(rparens, "print 1);\n");
+    snap_parse!(missing_rhs, "print 1 + ;\n");
+    snap_parse!(missing_lhs, "print + 1;\n");
+    snap_parse!(invalid_token, "print $;");
+    snap_parse!(missing_semicolon, "print 1; x");
+}

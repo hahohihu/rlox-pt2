@@ -1,0 +1,16 @@
+---
+source: src/compiler/parse/parser.rs
+expression: "crate::common::test_util::mock_parse(\"print 1; x\")"
+---
+stderr:
+Error: 
+   ╭─[<unknown>:?:?]
+   │
+ 1 │ print 1; x
+   │          ┬  
+   │          ╰── This statement should be terminated with ;
+   │          │  
+   │          ╰── Expected ;
+───╯
+
+

@@ -42,24 +42,10 @@ fn main() -> ExitCode {
     }
 }
 
-// These tests being all glommed together is a bit terrifying, but snapshot results are bound to location, so refactoring isn't worth it
-#[cfg(test)]
-mod test_errors {
-    use crate::snap_interpret;
-    snap_interpret!(missing_op, "print 1 1;");
-    snap_interpret!(missing_primary, "print ();\n");
-    snap_interpret!(missing_parens, "print ((1);\n");
-    snap_interpret!(rparens, "print 1);\n");
-    snap_interpret!(missing_rhs, "print 1 + ;\n");
-    snap_interpret!(missing_lhs, "print + 1;\n");
-    snap_interpret!(invalid_token, "print $;");
-    snap_interpret!(remaining_tokens, "print 1; x");
-    snap_interpret!(floating_expr, "1;");
-}
-
 #[cfg(test)]
 mod test_runtime {
     use crate::snap_interpret;
+    snap_interpret!(floating_expr, "1;");
     snap_interpret!(mismatched_add, "print true + 1;");
     snap_interpret!(mismatched_sub, "print true - 1;");
     snap_interpret!(negate_bool, "print -true;");
