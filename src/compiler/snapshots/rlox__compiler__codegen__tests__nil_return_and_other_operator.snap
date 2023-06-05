@@ -7,7 +7,7 @@ bytecode:
 0000         JUMP_REL         2
 0003 |       NIL
 0004 |       RETURN
-0005 ni      CONSTANT            0 '<function ni>'
+0005 ni      CLOSURE          <function ni>
 0007 |       DEFINE_GLOBAL       1 'ni'
 0009 ni      GET_GLOBAL          1 'ni'
 0011 |       CALL             0

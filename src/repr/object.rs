@@ -1,5 +1,5 @@
 use super::alloc;
-use super::function::ObjFunction;
+use super::function::{ObjClosure, ObjFunction};
 use super::native_function::NativeFunction;
 
 use super::{string::UnsafeString, valid::ValidPtr};
@@ -23,45 +23,19 @@ impl Display for Object {
     }
 }
 
-impl From<ObjectKind> for Object {
-    fn from(value: ObjectKind) -> Self {
-        Self::from(ObjectInner { kind: value })
-    }
-}
-
-impl From<ObjectInner> for Object {
-    fn from(value: ObjectInner) -> Self {
-        Object {
-            inner: ValidPtr::from(Box::new(value)),
-        }
-    }
-}
-
-impl From<String> for Object {
-    fn from(value: String) -> Self {
-        Self::from(ObjectKind::from(value))
-    }
-}
-
-impl From<UnsafeString> for Object {
-    fn from(str: UnsafeString) -> Self {
-        Self::from(ObjectKind::String { str })
-    }
-}
-
-impl From<ObjFunction> for Object {
-    fn from(fun: ObjFunction) -> Self {
-        Self::from(ObjectKind::Function { fun })
-    }
-}
-
-impl From<NativeFunction> for Object {
-    fn from(fun: NativeFunction) -> Self {
-        Self::from(ObjectKind::NativeFunction { fun })
+impl<T: Into<ObjectKind>> From<T> for Object {
+    fn from(value: T) -> Self {
+        Self::from_inner(ObjectInner { kind: value.into() })
     }
 }
 
 impl Object {
+    fn from_inner(inner: ObjectInner) -> Self {
+        Self {
+            inner: ValidPtr::from(Box::new(inner)),
+        }
+    }
+
     pub fn typename(self) -> &'static str {
         self.inner.as_ref().kind.typename()
     }
@@ -79,11 +53,9 @@ impl Object {
         self.inner.as_ref().kind.free();
         self.inner.free();
     }
-}
 
-impl From<Object> for ObjectKind {
-    fn from(value: Object) -> Self {
-        value.inner.as_ref().kind
+    pub fn kind(self) -> ObjectKind {
+        self.inner.as_ref().kind
     }
 }
 
@@ -99,6 +71,7 @@ struct ObjectInner {
 pub enum ObjectKind {
     String { str: UnsafeString },
     Function { fun: ObjFunction },
+    Closure { fun: ObjClosure },
     NativeFunction { fun: NativeFunction },
 }
 
@@ -107,8 +80,33 @@ impl Display for ObjectKind {
         match self {
             Self::String { str } => str.fmt(f),
             Self::Function { fun } => write!(f, "<function {}>", fun.name),
+            Self::Closure { fun } => write!(f, "<function {}>", fun.function.name),
             Self::NativeFunction { fun } => fun.fmt(f),
         }
+    }
+}
+
+impl From<ObjClosure> for ObjectKind {
+    fn from(fun: ObjClosure) -> Self {
+        Self::Closure { fun }
+    }
+}
+
+impl From<UnsafeString> for ObjectKind {
+    fn from(str: UnsafeString) -> Self {
+        ObjectKind::String { str }
+    }
+}
+
+impl From<ObjFunction> for ObjectKind {
+    fn from(fun: ObjFunction) -> Self {
+        ObjectKind::Function { fun }
+    }
+}
+
+impl From<NativeFunction> for ObjectKind {
+    fn from(fun: NativeFunction) -> Self {
+        ObjectKind::NativeFunction { fun }
     }
 }
 
@@ -124,7 +122,7 @@ impl ObjectKind {
     fn typename(self) -> &'static str {
         match self {
             Self::String { .. } => "string",
-            Self::Function { .. } => "function",
+            Self::Closure { .. } | Self::Function { .. } => "function",
             Self::NativeFunction { .. } => "native-function",
         }
     }
@@ -140,10 +138,18 @@ impl ObjectKind {
         }
     }
 
+    pub unsafe fn assume_function(self) -> ObjFunction {
+        match self {
+            Self::Function { fun } => fun,
+            _ => unreachable!(),
+        }
+    }
+
     unsafe fn free(self) {
         match self {
             Self::String { str } => str.free(),
             Self::Function { fun } => fun.free(),
+            Self::Closure { fun } => fun.free(),
             Self::NativeFunction { fun } => fun.free(),
         }
     }

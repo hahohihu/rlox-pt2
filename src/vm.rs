@@ -8,7 +8,7 @@ use crate::{
     compiler::compile,
     repr::{
         chunk::{Chunk, OpCode},
-        function::ObjFunction,
+        function::ObjClosure,
     },
     repr::{
         native_function::CallError,
@@ -260,7 +260,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.stack[self.stack.len() - i - 1]
     }
 
-    fn function_call(&mut self, function: ObjFunction, arg_count: u8) -> InterpretResult {
+    fn function_call(&mut self, closure: ObjClosure, arg_count: u8) -> InterpretResult {
+        let function = closure.function;
         if function.arity != arg_count {
             let span = self.get_span(-2..0);
             self.runtime_error(
@@ -307,7 +308,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn call(&mut self, arg_count: u8) -> InterpretResult {
         let value = self.peek(arg_count.into());
         match ObjectKind::try_from(value) {
-            Ok(ObjectKind::Function { fun }) => self.function_call(fun, arg_count),
+            Ok(ObjectKind::Closure { fun }) => self.function_call(fun, arg_count),
             Ok(ObjectKind::NativeFunction { fun }) => self.native_function_call(fun, arg_count),
             _ => {
                 let span = self.get_span(-2..0);
@@ -347,6 +348,15 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     }
                     self.stack.push(res);
                     self.ip = callframe.return_addr;
+                }
+                OpCode::Closure => {
+                    let function = unsafe {
+                        ObjectKind::try_from(self.read_constant())
+                            .unwrap()
+                            .assume_function()
+                    };
+                    let closure = ObjClosure { function };
+                    self.stack.push(closure.into());
                 }
                 OpCode::Call => {
                     let arg_count = self.next_byte();

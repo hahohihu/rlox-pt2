@@ -67,7 +67,7 @@ impl TryFrom<Value> for ObjectKind {
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
         if let Value::Object(obj) = value {
-            Ok(obj.into())
+            Ok(obj.kind())
         } else {
             Err(())
         }

@@ -338,7 +338,9 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             name: UnsafeString::from(name.data.as_str()),
         };
 
-        self.chunk.emit_constant(function.into(), name.span);
+        let constant = self.chunk.add_constant(function.into());
+        emit_bytes!(self.chunk, name.span; OpCode::Closure, constant);
+
         if self.in_global_scope() {
             let nameid = self.chunk.globals.add_or_get(&name.data);
             emit_bytes!(self.chunk, name.span; OpCode::DefineGlobal, nameid);

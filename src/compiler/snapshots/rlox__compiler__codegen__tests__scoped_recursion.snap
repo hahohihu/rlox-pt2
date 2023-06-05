@@ -24,7 +24,7 @@ bytecode:
 0031 return  RETURN
 0032         NIL
 0033 |       RETURN
-0034 foo     CONSTANT            4 '<function foo>'
+0034 foo     CLOSURE          <function foo>
 0036 foo     GET_LOCAL        0
 0038 1       CONSTANT            5 '1'
 0040 foo     CALL             1

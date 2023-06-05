@@ -18,3 +18,12 @@ impl ObjFunction {
         self.name.free();
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ObjClosure {
+    pub function: ObjFunction,
+}
+
+impl ObjClosure {
+    pub unsafe fn free(&self) {}
+}

@@ -16,6 +16,7 @@ pub enum OpCode {
     // 1 follow bytes ====
     Constant, // 1: a constant index
     Call,
+    Closure,
     // 2 follow bytes ====
     JumpRelIfFalse,
     JumpRelIfTrue,
@@ -133,6 +134,13 @@ impl Chunk {
         *offset += 3;
     }
 
+    fn closure(&self, offset: &mut usize, mut stdout: impl Write) {
+        let value = self.instructions[*offset + 1];
+        let fun = self.constants[value as usize];
+        writeln!(stdout, "{:<16} {}", "CLOSURE", fun).unwrap();
+        *offset += 2;
+    }
+
     pub fn disassemble_instruction(
         &self,
         mut offset: usize,
@@ -154,6 +162,7 @@ impl Chunk {
         match instruction {
             OpCode::Return => simple("RETURN"),
             OpCode::Constant => self.constant_instruction("CONSTANT", &mut offset, stdout),
+            OpCode::Closure => self.closure(&mut offset, stdout),
             OpCode::Negate => simple("NEGATE"),
             OpCode::Add => simple("ADD"),
             OpCode::Sub => simple("SUBTRACT"),
