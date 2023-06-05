@@ -44,7 +44,7 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod test_runtime {
-    use crate::snap_interpret;
+    use crate::{snap_interpret, snap_all};
     snap_interpret!(floating_expr, "1;");
     snap_interpret!(mismatched_add, "print true + 1;");
     snap_interpret!(mismatched_sub, "print true - 1;");
@@ -875,5 +875,19 @@ mod test_runtime {
         }
         print foo();
         "
+    }
+
+    snap_all! {
+        stack_closure,
+        r#"
+        fun outer() {
+            var x = "outside";
+            fun inner() {
+              print x;
+            }
+            inner();
+          }
+          outer();
+        "#
     }
 }

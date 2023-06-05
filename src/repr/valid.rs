@@ -28,6 +28,11 @@ impl<T: ?Sized> ValidPtr<T> {
     pub unsafe fn free(self) {
         drop(Box::from_raw(self.0.as_ptr()))
     }
+
+    /// ValidPtr frees using Box::from_raw, so this must either come from the same allocation as Box, or must not be freed through ValidPtr
+    pub unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
+        Self(ptr)
+    }
 }
 
 impl<T: ?Sized> From<Box<T>> for ValidPtr<T> {

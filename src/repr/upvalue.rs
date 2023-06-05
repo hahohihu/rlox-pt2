@@ -8,6 +8,10 @@ pub struct ObjUpvalue {
 }
 
 impl ObjUpvalue {
+    pub fn as_ref(&self) -> &Value {
+        self.value.as_ref()
+    }
+
     pub fn as_ptr(self) -> *mut Value {
         self.value.as_ptr()
     }

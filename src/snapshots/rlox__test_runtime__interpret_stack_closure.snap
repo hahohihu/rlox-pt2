@@ -1,0 +1,11 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(r#\"\n        fun outer() {\n            var x = \"outside\";\n            fun inner() {\n              print x;\n            }\n            inner();\n          }\n          outer();\n        \"#)"
+---
+stdout:
+outside
+
+
+stderr:
+
+

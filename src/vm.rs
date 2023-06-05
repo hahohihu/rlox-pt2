@@ -1,5 +1,5 @@
 mod stack;
-use std::{io::Write, mem::size_of, ops::Range};
+use std::{io::Write, mem::size_of, ops::Range, ptr::NonNull};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -394,10 +394,14 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         let local = self.next_byte() != 0;
                         let index = self.next_byte();
                         if local {
-                            todo!();
-                            // might need to use a static array for the stack
-                            // so we can safely get a pointer to it
-                            // upvalues.push()
+                            let stack_value = (&mut self.stack[index as usize]) as *mut _;
+                            let ptr = unsafe {
+                                // This is currently unsound because we don't close off the closures
+                                // Once we close them off, it will be sound since these pointers won't live past the stack getting popped.
+                                // (technically, not unsound per se since it will be using valid initialized memory - miri won't detect this)
+                                ValidPtr::from_ptr(NonNull::new_unchecked(stack_value))
+                            };
+                            upvalues.push(self.capture_upvalue(ptr));
                         } else {
                             let outer = self.callframe.last().unwrap().closure;
                             upvalues.push(outer.upvalues.as_ref()[index as usize]);
@@ -459,10 +463,18 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.push(self.stack[base_pointer + slot as usize])?;
                 }
                 OpCode::GetUpvalue => {
-                    todo!()
+                    let slot = self.next_byte();
+                    let closure = self.callframe.last().unwrap().closure;
+                    let value = closure.upvalues.as_ref()[slot as usize];
+                    self.push(*value.as_ref())?;
                 }
                 OpCode::SetUpvalue => {
-                    todo!()
+                    let slot = self.next_byte();
+                    let closure = self.callframe.last().unwrap().closure;
+                    unsafe {
+                        let upval = (*closure.upvalues.as_ptr())[slot as usize];
+                        (*upval.as_ptr()) = self.peek(0);
+                    }
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();

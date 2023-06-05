@@ -1,0 +1,30 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_codegen(r#\"\n        fun outer() {\n            var x = \"outside\";\n            fun inner() {\n              print x;\n            }\n            inner();\n          }\n          outer();\n        \"#)"
+---
+bytecode:
+==== test.lox ====
+0000         JUMP_REL         21
+0003 utside" CONSTANT            0 'outside'
+0005         JUMP_REL         5
+0008 x       GET_UPVALUE      0
+0010         PRINT
+0011 |       NIL
+0012 |       RETURN
+0013 inner   CLOSURE          <function inner @ 8>
+0015                               local 1
+0017 inner   GET_LOCAL        2
+0019 |       CALL             0
+0021         POP
+0022 |       NIL
+0023 |       RETURN
+0024 outer   CLOSURE          <function outer @ 3>
+0026 |       DEFINE_GLOBAL       1 'outer'
+0028 outer   GET_GLOBAL          1 'outer'
+0030 |       CALL             0
+0032         POP
+0033 |       NIL
+0034 |       RETURN
+
+
+

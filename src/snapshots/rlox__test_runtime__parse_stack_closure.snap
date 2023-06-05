@@ -1,0 +1,14 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_parse(r#\"\n        fun outer() {\n            var x = \"outside\";\n            fun inner() {\n              print x;\n            }\n            inner();\n          }\n          outer();\n        \"#)"
+---
+ast:
+((defun outer()((var x "outside")
+ (defun inner()((print x)
+))
+ (inner ())
+))
+ (outer ())
+)
+
+
