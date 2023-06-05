@@ -109,10 +109,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        let b = self.pop();
+        let a = self.pop();
         match (a, b) {
-            (Value::Num(a), Value::Num(b)) => self.stack.push(op(a, b)),
+            (Value::Num(a), Value::Num(b)) => self.push(op(a, b)),
             (a, b) => {
                 let span = self.get_span(-2..1);
                 self.runtime_error(
@@ -181,10 +181,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn negate(&mut self) -> InterpretResult {
-        let val = self.stack.pop().unwrap();
+        let val = self.pop();
         match val {
             Value::Num(n) => {
-                self.stack.push(Value::Num(-n));
+                self.push(Value::Num(-n));
             }
             val => {
                 let span = self.get_span(-1..0);
@@ -199,11 +199,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn add(&mut self) -> InterpretResult {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+        let b = self.pop();
+        let a = self.pop();
         match (a, b) {
             (Value::Num(a), Value::Num(b)) => {
-                self.stack.push(Value::Num(a + b));
+                self.push(Value::Num(a + b));
                 return Ok(());
             }
             (Value::Object(a), Value::Object(b)) => {
@@ -212,7 +212,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 if let (Some(a), Some(b)) = (a, b) {
                     let concatenated = Object::from(a + b);
                     self.objects.push(concatenated);
-                    self.stack.push(Value::Object(concatenated));
+                    self.push(Value::Object(concatenated));
                     return Ok(());
                 }
             }
@@ -275,6 +275,14 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.stack[self.stack.len() - i - 1]
     }
 
+    fn pop(&mut self) -> Value {
+        self.stack.pop().unwrap()
+    }
+
+    fn push(&mut self, value: Value) {
+        self.stack.push(value);
+    }
+
     fn function_call(&mut self, closure: ObjClosure, arg_count: u8) -> InterpretResult {
         let function = closure.function;
         if function.arity != arg_count {
@@ -301,7 +309,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn native_function_call(&mut self, function: NativeFunction, arg_count: u8) -> InterpretResult {
         match function.call(&self.stack[self.stack.len() - arg_count as usize..]) {
             Ok(value) => {
-                self.stack.push(value);
+                self.push(value);
                 Ok(())
             }
             Err(CallError::ArityMismatch(arity)) => {
@@ -361,11 +369,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let Some(callframe) = self.callframe.pop() else {
                         return Ok(());
                     };
-                    let res = self.stack.pop().unwrap();
+                    let res = self.pop();
                     while self.stack.len() > callframe.base_pointer {
-                        self.stack.pop().unwrap();
+                        self.pop();
                     }
-                    self.stack.push(res);
+                    self.push(res);
                     self.ip = callframe.return_addr;
                 }
                 OpCode::Closure => {
@@ -386,24 +394,24 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     }
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
                     let closure = ObjClosure { function, upvalues };
-                    self.stack.push(closure.into());
+                    self.push(closure.into());
                 }
                 OpCode::Call => {
                     let arg_count = self.next_byte();
                     self.call(arg_count)?;
                 }
                 OpCode::Pop => {
-                    self.stack.pop().unwrap();
+                    self.pop();
                 }
                 OpCode::JumpRelIfFalse => {
                     let offset = self.read::<u16>();
-                    if self.stack.last().unwrap().falsey() {
+                    if self.peek(0).falsey() {
                         self.jump(offset as isize);
                     }
                 }
                 OpCode::JumpRelIfTrue => {
                     let offset = self.read::<u16>();
-                    if !self.stack.last().unwrap().falsey() {
+                    if !self.peek(0).falsey() {
                         self.jump(offset as isize);
                     }
                 }
@@ -417,27 +425,27 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::DefineGlobal => {
                     let index = self.next_byte();
-                    let value = self.stack.last().unwrap();
-                    self.define_global(index, *value);
-                    self.stack.pop().unwrap();
+                    let value = self.peek(0);
+                    self.define_global(index, value);
+                    self.pop();
                 }
                 OpCode::GetGlobal => {
                     let index = self.next_byte();
                     let value = self.get_global(index)?;
-                    self.stack.push(value);
+                    self.push(value);
                 }
                 OpCode::SetGlobal => {
                     let index = self.next_byte();
-                    let value = self.stack.last().unwrap();
-                    self.set_global(index, *value)?;
+                    let value = self.peek(0);
+                    self.set_global(index, value)?;
                 }
                 OpCode::SetLocal => {
                     let slot = self.next_byte();
-                    self.stack[base_pointer + slot as usize] = *self.stack.last().unwrap();
+                    self.stack[base_pointer + slot as usize] = self.peek(0);
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.stack.push(self.stack[base_pointer + slot as usize]);
+                    self.push(self.stack[base_pointer + slot as usize]);
                 }
                 OpCode::GetUpvalue => {
                     todo!()
@@ -447,20 +455,20 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();
-                    self.stack.push(constant);
+                    self.push(constant);
                 }
                 OpCode::Nil => {
-                    self.stack.push(Value::Nil);
+                    self.push(Value::Nil);
                 }
-                OpCode::True => self.stack.push(Value::Bool(true)),
-                OpCode::False => self.stack.push(Value::Bool(false)),
+                OpCode::True => self.push(Value::Bool(true)),
+                OpCode::False => self.push(Value::Bool(false)),
                 OpCode::Negate => self.negate()?,
                 OpCode::Not => {
-                    let value = Value::Bool(self.stack.pop().unwrap().falsey());
-                    self.stack.push(value);
+                    let value = Value::Bool(self.pop().falsey());
+                    self.push(value);
                 }
                 OpCode::Print => {
-                    let value = self.stack.pop().unwrap();
+                    let value = self.pop();
                     writeln!(self.stdout, "{value}").unwrap();
                 }
                 OpCode::Add => self.add()?,
@@ -470,9 +478,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::Less => self.binary_num_op("<", |a, b| Value::Bool(a < b))?,
                 OpCode::Greater => self.binary_num_op(">", |a, b| Value::Bool(a > b))?,
                 OpCode::Equal => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    self.stack.push(Value::Bool(a == b));
+                    let b = self.pop();
+                    let a = self.pop();
+                    self.push(Value::Bool(a == b));
                 }
                 OpCode::Invalid => {
                     unreachable!("Reached invalid opcode at {}", self.ip_offset())
