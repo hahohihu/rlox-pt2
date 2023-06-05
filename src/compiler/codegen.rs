@@ -460,31 +460,8 @@ pub fn generate(source: &str, stderr: impl Write, ast: &Statements) -> CodegenRe
 
 #[cfg(test)]
 mod tests {
-    pub fn assemble(source: &str) -> String {
-        let mut stderr = vec![];
-        let chunk = super::super::compile(source, &mut stderr);
-        let stderr = String::from_utf8(strip_ansi_escapes::strip(stderr).unwrap()).unwrap();
-        if let Some(chunk) = chunk {
-            let mut stdout = vec![];
-            chunk.disassemble("test.lox", source, &mut stdout);
-            let stdout = String::from_utf8(strip_ansi_escapes::strip(stdout).unwrap()).unwrap();
-            format!("stdout:\n{stdout}\n\n{stderr}")
-        } else {
-            format!("stderr:\n{stderr}\n")
-        }
-    }
-
-    #[macro_export]
-    macro_rules! codegen {
-        ($name:ident, $input:literal) => {
-            #[test]
-            fn $name() {
-                $crate::common::util::assert_snapshot!(assemble($input));
-            }
-        };
-    }
-
-    codegen! {
+    use crate::snap_codegen;
+    snap_codegen! {
         calls_and_other_operator,
         "
         fun foo() {
@@ -494,7 +471,7 @@ mod tests {
         "
     }
 
-    codegen! {
+    snap_codegen! {
         scoped_recursion,
         "
         {
@@ -510,7 +487,7 @@ mod tests {
         "
     }
 
-    codegen! {
+    snap_codegen! {
         nil_return_and_other_operator,
         "
         fun ni() {}
@@ -518,7 +495,7 @@ mod tests {
         "
     }
 
-    codegen! {
+    snap_codegen! {
         if_then_nil,
         "
         fun foo() {

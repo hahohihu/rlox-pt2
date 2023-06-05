@@ -1,8 +1,8 @@
 ---
 source: src/compiler/codegen.rs
-expression: "assemble(\"\n        fun foo() {\n            if false {\n                return 0;\n            }\n        }\n        print foo();\n        \")"
+expression: "crate::common::test_util::mock_codegen(\"\n        fun foo() {\n            if false {\n                return 0;\n            }\n        }\n        print foo();\n        \")"
 ---
-stdout:
+bytecode:
 ==== test.lox ====
 0000         CONSTANT            0 '<native function clock>'
 0002 |       DEFINE_GLOBAL       0 'clock'

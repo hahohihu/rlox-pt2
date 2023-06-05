@@ -1,8 +1,8 @@
 ---
 source: src/compiler/parse/parser.rs
-expression: "mock_parse(\"\n        fun foo() {\n            return 1;\n        }\n        print foo() + foo();\n        \")"
+expression: "crate::common::test_util::mock_parse(\"\n        fun foo() {\n            return 1;\n        }\n        print foo() + foo();\n        \")"
 ---
-stdout:
+ast:
 ((defun foo()((return 1)
 ))
  (+ (foo ()) (foo ()))

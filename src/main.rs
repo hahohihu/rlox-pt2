@@ -45,39 +45,39 @@ fn main() -> ExitCode {
 // These tests being all glommed together is a bit terrifying, but snapshot results are bound to location, so refactoring isn't worth it
 #[cfg(test)]
 mod test_errors {
-    use crate::snap;
-    snap!(missing_op, "print 1 1;");
-    snap!(missing_primary, "print ();\n");
-    snap!(missing_parens, "print ((1);\n");
-    snap!(rparens, "print 1);\n");
-    snap!(missing_rhs, "print 1 + ;\n");
-    snap!(missing_lhs, "print + 1;\n");
-    snap!(invalid_token, "print $;");
-    snap!(remaining_tokens, "print 1; x");
-    snap!(floating_expr, "1;");
+    use crate::snap_interpret;
+    snap_interpret!(missing_op, "print 1 1;");
+    snap_interpret!(missing_primary, "print ();\n");
+    snap_interpret!(missing_parens, "print ((1);\n");
+    snap_interpret!(rparens, "print 1);\n");
+    snap_interpret!(missing_rhs, "print 1 + ;\n");
+    snap_interpret!(missing_lhs, "print + 1;\n");
+    snap_interpret!(invalid_token, "print $;");
+    snap_interpret!(remaining_tokens, "print 1; x");
+    snap_interpret!(floating_expr, "1;");
 }
 
 #[cfg(test)]
 mod test_runtime {
-    use crate::snap;
-    snap!(mismatched_add, "print true + 1;");
-    snap!(mismatched_sub, "print true - 1;");
-    snap!(negate_bool, "print -true;");
-    snap!(one, "print 1;");
-    snap!(point_one, "print 0.1;");
-    snap!(print_false, "print false;");
-    snap!(print_nil, "print nil;");
-    snap!(add_mul, "print 1 + 2 * 3;");
-    snap!(mul_div, "print 6 * 6 / 3;");
-    snap!(complex_arithmetic, "print 20 * 5 / 0.5 - 100.0;");
-    snap!(div_0, "print 1 / 0;");
-    snap!(parens, "print 2 * (6 + 1) / (2) -- 100;");
-    snap!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
-    snap!(unary, "print -1 - -2 == --1 == true;");
-    snap!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
-    snap! {precedence, "print 1 * 2 == 4 / 2;"}
+    use crate::snap_interpret;
+    snap_interpret!(mismatched_add, "print true + 1;");
+    snap_interpret!(mismatched_sub, "print true - 1;");
+    snap_interpret!(negate_bool, "print -true;");
+    snap_interpret!(one, "print 1;");
+    snap_interpret!(point_one, "print 0.1;");
+    snap_interpret!(print_false, "print false;");
+    snap_interpret!(print_nil, "print nil;");
+    snap_interpret!(add_mul, "print 1 + 2 * 3;");
+    snap_interpret!(mul_div, "print 6 * 6 / 3;");
+    snap_interpret!(complex_arithmetic, "print 20 * 5 / 0.5 - 100.0;");
+    snap_interpret!(div_0, "print 1 / 0;");
+    snap_interpret!(parens, "print 2 * (6 + 1) / (2) -- 100;");
+    snap_interpret!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
+    snap_interpret!(unary, "print -1 - -2 == --1 == true;");
+    snap_interpret!(lots_of_negs, "print ---------------------------------------------------------------------------------------------------------1;");
+    snap_interpret! {precedence, "print 1 * 2 == 4 / 2;"}
 
-    snap!(
+    snap_interpret!(
         falsey,
         "
         print !nil;
@@ -88,32 +88,32 @@ mod test_runtime {
     "
     );
 
-    snap!(less_than, "print 1 < 1; print 0 < 1; print 2 < 1;");
-    snap!(less_equal, "print 1 <= 1; print 0 <= 1; print 2 <= 1;");
-    snap!(equality, "print 1 == 1; print 0 == 1; print 2 == 1;");
-    snap!(inequality, "print 1 != 1; print 0 != 1;");
-    snap!(greater_than, "print 1 > 1; print 0 > 1; print 2 > 1;");
-    snap!(greater_equal, "print 1 >= 1; print 0 >= 1; print 2 >= 1;");
+    snap_interpret!(less_than, "print 1 < 1; print 0 < 1; print 2 < 1;");
+    snap_interpret!(less_equal, "print 1 <= 1; print 0 <= 1; print 2 <= 1;");
+    snap_interpret!(equality, "print 1 == 1; print 0 == 1; print 2 == 1;");
+    snap_interpret!(inequality, "print 1 != 1; print 0 != 1;");
+    snap_interpret!(greater_than, "print 1 > 1; print 0 > 1; print 2 > 1;");
+    snap_interpret!(greater_equal, "print 1 >= 1; print 0 >= 1; print 2 >= 1;");
 
-    snap!(string, r#"print "foo";"#);
-    snap!(concatenation, r#"print "foo" + "bar";"#);
-    snap!(string_comparison, r#"print "foo" == "foo";"#);
-    snap!(
+    snap_interpret!(string, r#"print "foo";"#);
+    snap_interpret!(concatenation, r#"print "foo" + "bar";"#);
+    snap_interpret!(string_comparison, r#"print "foo" == "foo";"#);
+    snap_interpret!(
         compound_string_comparison,
         r#"print "foo" + "bar" == "f" + "oo" + "bar";"#
     );
-    snap!(
+    snap_interpret!(
         unicode,
         r#"print "💩" + "👪" + "༕" + "갍" + "⑯" + "ฒ" + "ڦ";"#
     );
-    snap!(
+    snap_interpret!(
         globals,
         "
         var answer = 42;
         print answer;
         "
     );
-    snap!(
+    snap_interpret!(
         global_strings,
         r#"
         var foo = "foo";
@@ -121,15 +121,15 @@ mod test_runtime {
         print foo + bar;
         "#
     );
-    snap!(
+    snap_interpret!(
         uninitialized_is_nil,
         "
         var foo;
         print foo;
         "
     );
-    snap!(missing_global, "var bar; print foo;");
-    snap!(
+    snap_interpret!(missing_global, "var bar; print foo;");
+    snap_interpret!(
         shadowing,
         "
         var a = 1;
@@ -137,9 +137,9 @@ mod test_runtime {
         print a;
         "
     );
-    snap!(declaration_is_not_expression, "var a == 1;");
+    snap_interpret!(declaration_is_not_expression, "var a == 1;");
 
-    snap!(
+    snap_interpret!(
         assignment,
         "
         var a = 0;
@@ -147,13 +147,13 @@ mod test_runtime {
         print a;
         "
     );
-    snap!(
+    snap_interpret!(
         invalid_lvalue,
         "
         a * b = c + d;
         "
     );
-    snap!(
+    snap_interpret!(
         nested_assign,
         "
         var a;
@@ -162,14 +162,14 @@ mod test_runtime {
         print b;
         "
     );
-    snap!(
+    snap_interpret!(
         assign_parens,
         "
         var a;
         print 1 * (a = 2);  
         "
     );
-    snap!(
+    snap_interpret!(
         assign_a_string,
         "
         var s = \"foo\";
@@ -177,7 +177,7 @@ mod test_runtime {
         print s;
         "
     );
-    snap! {
+    snap_interpret! {
         print_assign,
         "
         var s;
@@ -185,7 +185,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_scope,
         "
         {
@@ -195,7 +195,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         nested_scope,
         "
         {
@@ -210,7 +210,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         inaccessible_scope,
         "
         {
@@ -220,7 +220,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         global_and_local_scope,
         "
         var a = 1;
@@ -235,7 +235,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         // I diverge from the book and allow this because it's fine and useful
         // though somewhat inefficient since it takes up extra stack space
         same_scope_shadowing,
@@ -249,7 +249,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         scoped_assignment,
         "
         var a;
@@ -262,7 +262,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         multi_local_assign,
         "
         {
@@ -275,14 +275,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         invalid_declaration,
         "
         var a = var b;
         "
     }
 
-    snap! {
+    snap_interpret! {
         // todo: this error message could be better
         unterminated_scope,
         "
@@ -292,14 +292,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         global_declaration_without_identifier,
         "
         var 1;
         "
     }
 
-    snap! {
+    snap_interpret! {
         local_declaration_without_identifier,
         "
         {
@@ -308,29 +308,29 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         set_undeclared_global,
         "
         a = 1;
         "
     }
 
-    snap! {
+    snap_interpret! {
         eof_after_variable,
         "
         var a
         "
     }
 
-    snap! {invalid_expr_in_parens, "(1 1"}
-    snap! {
+    snap_interpret! {invalid_expr_in_parens, "(1 1"}
+    snap_interpret! {
         not_a_number,
         "
         var n = 0 / 0;
         print n == n;
         "
     }
-    snap! {
+    snap_interpret! {
         equality_usually_reflexive,
         r#"
         var n = 0;
@@ -346,7 +346,7 @@ mod test_runtime {
         "#
     }
 
-    snap! {
+    snap_interpret! {
         shadow_and_reuse,
         "
         var a = 0;
@@ -358,14 +358,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         cannot_use_global_var_in_declaration,
         "
         var a = a;
         "
     }
 
-    snap! {
+    snap_interpret! {
         cannot_use_local_var_in_declaration,
         "
         {
@@ -374,14 +374,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         invalid_place,
         "
         1 = 1;
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_if,
         r#"
         if true {
@@ -393,7 +393,7 @@ mod test_runtime {
         "#
     }
 
-    snap! {
+    snap_interpret! {
         nested_if,
         "
         if true {
@@ -409,7 +409,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         if_is_scope,
         "
         var a;
@@ -421,7 +421,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         parens_ok,
         "
         if (true) {
@@ -430,14 +430,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         brackets_mandatory,
         "
         if (true) print 1;
         "
     }
 
-    snap! {
+    snap_interpret! {
         if_sequence,
         "
         if false {
@@ -455,7 +455,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         invalid_if_cond,
         "
         if print a; {
@@ -464,7 +464,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         invalid_block,
         "
         if true {
@@ -473,7 +473,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_else,
         "
         if false {
@@ -484,7 +484,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_then,
         "
         if true {
@@ -495,7 +495,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         assignment_in_condition,
         "
         var a = true;
@@ -507,7 +507,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         assignment_in_parens,
         "
         var a;
@@ -516,7 +516,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         nested_if_else,
         "
         print 0;
@@ -537,7 +537,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         and_condition,
         "
         var a;
@@ -548,7 +548,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         and_short_circuit,
         "
         var a;
@@ -559,7 +559,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         or_condition,
         "
         var a;
@@ -570,7 +570,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         or_short_circuit,
         "
         var a;
@@ -580,7 +580,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_while_loop,
         "
         var a = 0;
@@ -592,7 +592,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         nested_while_loops,
         "
         var a = 0;
@@ -608,7 +608,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_for_loop,
         "
         for var a = 0; a < 3; a = a + 1 {
@@ -617,7 +617,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         bigger_scope_for_loop,
         "
         var a;
@@ -627,7 +627,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         empty_initializer_for_loop,
         "
         var a = 0;
@@ -637,7 +637,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         empty_update_for_loop,
         "
         for var a = 0; a < 3; {
@@ -647,7 +647,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         nested_for_loops,
         "
         for var a = 0; a < 3; a = a + 1 {
@@ -658,7 +658,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         for_loop_is_scoped,
         "
         for var a = 0; a < 3; a = a + 1 {}
@@ -666,7 +666,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         function_declaration,
         "
         fun foo() {}
@@ -675,7 +675,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         basic_function_call,
         r#"
         fun hello_world() {
@@ -686,7 +686,7 @@ mod test_runtime {
         "#
     }
 
-    snap! {
+    snap_interpret! {
         function_call_args,
         "
         fun show(n) {
@@ -697,7 +697,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         many_args_function,
         "
         fun show(a, b, c) {
@@ -710,7 +710,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         scoped_function,
         r#"
         {
@@ -722,7 +722,7 @@ mod test_runtime {
         "#
     }
 
-    snap! {
+    snap_interpret! {
         scoped_function_args,
         r#"
         {
@@ -735,7 +735,7 @@ mod test_runtime {
         "#
     }
 
-    snap! {
+    snap_interpret! {
         function_out_of_scope,
         "
         {
@@ -745,7 +745,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         nested_function,
         "
         fun foo() {
@@ -758,7 +758,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         early_return,
         "
         fun foo() {
@@ -770,7 +770,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         return_value,
         "
         fun foo() {
@@ -781,7 +781,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         return_function,
         "
         fun foo() {
@@ -795,7 +795,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         return_function_with_args,
         "
         fun foo() {
@@ -809,7 +809,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         functions_and_global_state,
         "
         var cond = true;
@@ -834,7 +834,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         non_returning_end,
         "
         fun foo() {
@@ -847,14 +847,14 @@ mod test_runtime {
         "
     }
 
-    snap! { // intentionally deviates - no harm in allowing this
+    snap_interpret! { // intentionally deviates - no harm in allowing this
         top_level_return,
         "
         return 1;
         "
     }
 
-    snap! {
+    snap_interpret! {
         recursive_global,
         "
         fun add(a, b) {
@@ -869,7 +869,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         clock_call,
         // time is variable and I don't want to constantly accept this
         "
@@ -878,14 +878,14 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         clock_call_wrong_arity,
         "
         clock(1);
         "
     }
 
-    snap! {
+    snap_interpret! {
         clock_scoped,
         "
         {
@@ -894,7 +894,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         clock_overload,
         "
         fun clock() {
@@ -904,7 +904,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         comments,
         "
         // comment
@@ -913,7 +913,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         calls_and_other_operator,
         "
         fun foo() {
@@ -923,7 +923,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         scoped_recursion,
         "
         {
@@ -939,7 +939,7 @@ mod test_runtime {
         "
     }
 
-    snap! {
+    snap_interpret! {
         if_then_nil,
         "
         fun foo() {
