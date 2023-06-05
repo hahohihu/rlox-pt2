@@ -11,6 +11,7 @@ use crate::repr::chunk::Chunk;
 use crate::repr::chunk::OpCode;
 use crate::repr::native_function::CallError;
 use crate::repr::native_function::NativeFunction;
+use crate::repr::scope::Scope;
 use crate::repr::string::UnsafeString;
 use crate::repr::value::Value;
 
@@ -242,6 +243,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         Ok(())
     }
 
+    fn resolve(&mut self, name: &str) -> (Scope, u8) {
+        if let Some(pos) = self.resolve_local(name) {
+            (Scope::Local, pos)
+        } else {
+            (Scope::Global, self.chunk.globals.add_or_get(name))
+        }
+    }
+
     fn expression(&mut self, expression: &Expression) -> CodegenResult<()> {
         match expression {
             Expression::Binary(bin @ BinaryExpr { kind, .. }) => match kind.data {
@@ -259,20 +268,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             }
             Expression::Literal(lit) => self.literal(lit)?,
             Expression::Assignment { id, rhs } => {
-                let (opcode, follow_byte) = if let Some(pos) = self.resolve_local(&id.data) {
-                    (OpCode::SetLocal, pos)
-                } else {
-                    (OpCode::SetGlobal, self.chunk.globals.add_or_get(&id.data))
-                };
+                let (scope, follow_byte) = self.resolve(&id.data);
+                let opcode = scope.set_opcode();
                 self.expression(&rhs.data)?;
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
             }
             Expression::Identifier(id) => {
-                let (opcode, follow_byte) = if let Some(pos) = self.resolve_local(&id.data) {
-                    (OpCode::GetLocal, pos)
-                } else {
-                    (OpCode::GetGlobal, self.chunk.globals.add_or_get(&id.data))
-                };
+                let (scope, follow_byte) = self.resolve(&id.data);
+                let opcode = scope.get_opcode();
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
             }
             Expression::Call(call) => self.function_call(call)?,

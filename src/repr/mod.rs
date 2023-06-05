@@ -4,6 +4,7 @@ pub mod function;
 pub mod interner;
 pub mod native_function;
 pub mod object;
+pub mod scope;
 pub mod string;
 pub mod try_as;
 pub mod valid;
