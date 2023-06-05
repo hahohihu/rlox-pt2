@@ -10,6 +10,7 @@ use crate::{
         chunk::{Chunk, OpCode},
         function::{ObjClosure, ObjFunction},
         string::UnsafeString,
+        try_as::{TryAs, TryCast},
     },
     repr::{
         native_function::CallError,
@@ -205,8 +206,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 return Ok(());
             }
             (Value::Object(a), Value::Object(b)) => {
-                let a = a.try_as::<UnsafeString>();
-                let b = b.try_as::<UnsafeString>();
+                let a = UnsafeString::try_cast(a);
+                let b = UnsafeString::try_cast(b);
                 if let (Some(a), Some(b)) = (a, b) {
                     let concatenated = Object::from(a + b);
                     self.objects.push(concatenated);
@@ -356,7 +357,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.ip = callframe.return_addr;
                 }
                 OpCode::Closure => {
-                    let function = self.read_constant().try_as::<ObjFunction>().unwrap();
+                    let function: ObjFunction = self.read_constant().unwrap_as();
                     let closure = ObjClosure { function };
                     self.stack.push(closure.into());
                 }

@@ -2,6 +2,7 @@ use super::alloc;
 use super::function::{ObjClosure, ObjFunction};
 use super::native_function::NativeFunction;
 
+use super::try_as::TryAs;
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -40,11 +41,6 @@ impl Object {
         self.inner.as_ref().kind.typename()
     }
 
-    // try_into/try_from doesn't work because of orphan rules
-    pub fn try_as<T: TryFrom<ObjectKind>>(self) -> Option<T> {
-        self.kind().try_into().ok()
-    }
-
     pub unsafe fn free(self) {
         alloc::trace!("Freeing {self}");
         self.inner.as_ref().kind.free();
@@ -53,6 +49,15 @@ impl Object {
 
     pub fn kind(self) -> ObjectKind {
         self.inner.as_ref().kind
+    }
+}
+
+impl<T> TryAs<T> for Object
+where
+    ObjectKind: TryAs<T>,
+{
+    fn try_as(self) -> Option<T> {
+        self.kind().try_as()
     }
 }
 
@@ -115,24 +120,20 @@ impl From<String> for ObjectKind {
     }
 }
 
-impl TryFrom<ObjectKind> for ObjFunction {
-    type Error = ();
-
-    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
-        match value {
-            ObjectKind::Function { fun } => Ok(fun),
-            _ => Err(()),
+impl TryAs<ObjFunction> for ObjectKind {
+    fn try_as(self) -> Option<ObjFunction> {
+        match self {
+            ObjectKind::Function { fun } => Some(fun),
+            _ => None,
         }
     }
 }
 
-impl TryFrom<ObjectKind> for UnsafeString {
-    type Error = ();
-
-    fn try_from(value: ObjectKind) -> Result<Self, Self::Error> {
-        match value {
-            ObjectKind::String { str } => Ok(str),
-            _ => Err(()),
+impl TryAs<UnsafeString> for ObjectKind {
+    fn try_as(self) -> Option<UnsafeString> {
+        match self {
+            ObjectKind::String { str } => Some(str),
+            _ => None,
         }
     }
 }

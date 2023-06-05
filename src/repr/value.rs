@@ -1,4 +1,4 @@
-use super::{alloc, object::ObjectKind};
+use super::{alloc, try_as::TryAs};
 use std::fmt::Display;
 
 use super::object::Object;
@@ -35,13 +35,6 @@ impl Value {
     pub fn falsey(&self) -> bool {
         matches!(self, Self::Bool(false) | Self::Nil)
     }
-
-    pub fn try_as<T: TryFrom<ObjectKind>>(self) -> Option<T> {
-        match self {
-            Self::Object(obj) => obj.try_as::<T>(),
-            _ => None,
-        }
-    }
 }
 
 impl From<bool> for Value {
@@ -66,5 +59,17 @@ impl From<&str> for Value {
 impl<T: Into<Object>> From<T> for Value {
     fn from(value: T) -> Self {
         Value::Object(value.into())
+    }
+}
+
+impl<T> TryAs<T> for Value
+where
+    Object: TryAs<T>,
+{
+    fn try_as(self) -> Option<T> {
+        match self {
+            Self::Object(obj) => obj.try_as(),
+            _ => None,
+        }
     }
 }
