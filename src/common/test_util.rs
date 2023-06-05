@@ -9,6 +9,13 @@ pub fn setup_test() {
     })
 }
 
+#[macro_export]
+macro_rules! black_box {
+    ($expr:expr) => {
+        ::std::hint::black_box($expr);
+    };
+}
+
 #[cfg(feature = "snap")]
 pub use ::insta::assert_snapshot;
 #[cfg(not(feature = "snap"))]

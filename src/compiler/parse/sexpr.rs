@@ -66,7 +66,7 @@ impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::Expr(expr) => expr.data.fmt(f)?,
-            Statement::Print(expr) => expr.data.fmt(f)?,
+            Statement::Print(expr) => write!(f, "(print {expr})")?,
             Statement::VarDeclaration { id, rhs } => {
                 write!(f, "(var {}", id.data)?;
                 if let Some(rhs) = rhs {

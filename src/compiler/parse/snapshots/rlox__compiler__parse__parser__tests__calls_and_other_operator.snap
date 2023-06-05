@@ -5,7 +5,7 @@ expression: "crate::common::test_util::mock_parse(\"\n        fun foo() {\n     
 ast:
 ((defun foo()((return 1)
 ))
- (+ (foo ()) (foo ()))
+ (print (+ (foo ()) (foo ())))
 )
 
 

@@ -143,7 +143,9 @@ impl Chunk {
         if offset > 0 && self.spans[offset] == self.spans[offset - 1] {
             write!(stdout, "{:<8}", "|").unwrap();
         } else {
-            write!(stdout, "{:<8}", &source[self.spans[offset]]).unwrap();
+            let snippet = &source[self.spans[offset]];
+            let snippet = &snippet[snippet.len().saturating_sub(7)..];
+            write!(stdout, "{:<8}", snippet).unwrap();
         }
 
         let chunk = self.instructions[offset];

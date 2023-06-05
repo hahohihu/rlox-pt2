@@ -657,4 +657,12 @@ mod errors {
         1 = 1;
         "
     }
+
+    snap_parse! {
+        brackets_mandatory,
+        "
+        if (true) print 1;
+        "
+    }
+
 }

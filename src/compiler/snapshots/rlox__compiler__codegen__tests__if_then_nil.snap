@@ -4,23 +4,21 @@ expression: "crate::common::test_util::mock_codegen(\"\n        fun foo() {\n   
 ---
 bytecode:
 ==== test.lox ====
-0000         JUMP_REL         14
+0000         JUMP_REL         10
 0003 false   FALSE
-0004 |       JUMP_REL_IF_FALSE 7
+0004 |       JUMP_REL_IF_FALSE 4
 0007         POP
 0008 0       CONSTANT            0 '0'
 0010 return  RETURN
-0011         JUMP_REL         1
-0014 |       POP
-0015 |       NIL
-0016 |       RETURN
-0017 foo     CONSTANT            1 '<function foo>'
-0019 |       DEFINE_GLOBAL       1 'foo'
-0021 foo     GET_GLOBAL          1 'foo'
-0023 |       CALL             0
-0025         PRINT
-0026 |       NIL
-0027 |       RETURN
+0011         NIL
+0012 |       RETURN
+0013 foo     CONSTANT            1 '<function foo>'
+0015 |       DEFINE_GLOBAL       1 'foo'
+0017 foo     GET_GLOBAL          1 'foo'
+0019 |       CALL             0
+0021         PRINT
+0022 |       NIL
+0023 |       RETURN
 
 
 

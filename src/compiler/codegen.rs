@@ -379,17 +379,22 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
                 else_branch,
             } => {
                 self.expression(&cond.data)?;
-                let then_jump = self.chunk.emit_jump(OpCode::JumpRelIfFalse, cond.span);
+                let if_false_jump = self.chunk.emit_jump(OpCode::JumpRelIfFalse, cond.span);
                 self.chunk.emit_impl_byte(OpCode::Pop);
                 self.scoped_block(&then_branch.data)?;
-                let else_jump = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
-                self.patch_jump(then_jump, Chunk::impl_span())?;
-
-                self.chunk.emit_impl_byte(OpCode::Pop);
-                if let Some(else_branch) = else_branch {
+                let end_jump = if let Some(else_branch) = else_branch {
+                    // skip else after if
+                    let end_else_jump = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
+                    self.patch_jump(if_false_jump, Chunk::impl_span())?;
+                    // pop the condition
+                    self.chunk.emit_impl_byte(OpCode::Pop);
                     self.scoped_block(&else_branch.data)?;
-                }
-                self.patch_jump(else_jump, Chunk::impl_span())?;
+                    end_else_jump
+                } else {
+                    if_false_jump
+                };
+
+                self.patch_jump(end_jump, Chunk::impl_span())?;
             }
             Statement::While { cond, body } => {
                 let start = self.chunk.instructions.len();

@@ -364,13 +364,6 @@ mod test_runtime {
     }
 
     snap_interpret! {
-        brackets_mandatory,
-        "
-        if (true) print 1;
-        "
-    }
-
-    snap_interpret! {
         if_sequence,
         "
         if false {
