@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use std::slice::SliceIndex;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -139,13 +140,16 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         *size += 1;
     }
 
-    fn resolve_local(&self, name: &str) -> Option<LocalSymbol> {
+    fn resolve_local(
+        &self,
+        name: &str,
+        local_range: impl SliceIndex<[u8], Output = [u8]>,
+    ) -> Option<LocalSymbol> {
         let nameid = self.interned_locals.get(name)?;
         // offset is needed to handle functions
         // i - base_pointer for offset, which the VM will use with base_pointer + i
         // there is conceptual overlap, but the previous bp is static, where the latter bp is dynamic
-        let base_pointer = self.static_call_stack.last().unwrap().base_pointer;
-        for (i, local) in self.defined_locals[base_pointer..].iter().enumerate().rev() {
+        for (i, local) in self.defined_locals[local_range].iter().enumerate().rev() {
             if nameid == *local {
                 // putting function code inline + jumping over it is slightly sus with closures or self-modifying code, but I don't think the latter will happen
                 // and iirc, closure code will be modified such that they don't need duplication
@@ -156,9 +160,16 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         None
     }
 
+    fn resolve_upvalue(&self, _name: &str) -> Option<u8> {
+        None
+    }
+
     fn resolve(&mut self, name: &str) -> (Scope, u8) {
-        if let Some(pos) = self.resolve_local(name) {
+        let base_pointer = self.static_call_stack.last().unwrap().base_pointer;
+        if let Some(pos) = self.resolve_local(name, base_pointer..) {
             (Scope::Local, pos)
+        } else if let Some(pos) = self.resolve_upvalue(name) {
+            (Scope::Upvalue, pos)
         } else {
             (Scope::Global, self.chunk.globals.add_or_get(name))
         }
