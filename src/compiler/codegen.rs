@@ -156,6 +156,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         None
     }
 
+    fn resolve(&mut self, name: &str) -> (Scope, u8) {
+        if let Some(pos) = self.resolve_local(name) {
+            (Scope::Local, pos)
+        } else {
+            (Scope::Global, self.chunk.globals.add_or_get(name))
+        }
+    }
+
     fn patch_jump(&mut self, addr: usize, span: Span) -> CodegenResult<()> {
         let Ok(jump) = u16::try_from(self.chunk.instructions.len() - addr - 2) else {
             self.simple_error(span, "The body of this branch is too long and would generate more instructions than is supported.");
@@ -241,14 +249,6 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             _ => unreachable!("Should be handled by function preconditions"),
         }
         Ok(())
-    }
-
-    fn resolve(&mut self, name: &str) -> (Scope, u8) {
-        if let Some(pos) = self.resolve_local(name) {
-            (Scope::Local, pos)
-        } else {
-            (Scope::Global, self.chunk.globals.add_or_get(name))
-        }
     }
 
     fn expression(&mut self, expression: &Expression) -> CodegenResult<()> {
