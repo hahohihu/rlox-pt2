@@ -61,7 +61,11 @@ pub struct Chunk {
 
 impl Drop for Chunk {
     fn drop(&mut self) {
-        for constant in &self.constants {
+        for constant in self
+            .constants
+            .iter()
+            .chain(self.native_globals.iter().map(|(_, v)| v))
+        {
             if let Value::Object(obj) = constant {
                 unsafe {
                     // SAFETY: See safety invariant on constants

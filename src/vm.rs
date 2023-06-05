@@ -1,3 +1,4 @@
+mod stack;
 use std::{io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
@@ -21,6 +22,8 @@ use crate::{
     repr::{native_function::NativeFunction, value::Value},
 };
 
+use self::stack::FixedStack;
+
 #[derive(Copy, Clone, Debug)]
 struct CallFrame {
     base_pointer: usize,
@@ -33,7 +36,7 @@ struct VM<'src, Stderr, Stdout> {
     chunk: Chunk,
     ip: usize,
     callframe: Vec<CallFrame>,
-    stack: Vec<Value>,
+    stack: FixedStack,
     source: &'src str,
     stderr: Stderr,
     stdout: Stdout,
@@ -71,7 +74,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             ip: 0,
             chunk,
             source,
-            stack: vec![],
+            stack: FixedStack::new(),
             objects: vec![],
             stderr,
             stdout,
@@ -112,7 +115,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let b = self.pop();
         let a = self.pop();
         match (a, b) {
-            (Value::Num(a), Value::Num(b)) => self.push(op(a, b)),
+            (Value::Num(a), Value::Num(b)) => self.push(op(a, b))?,
             (a, b) => {
                 let span = self.get_span(-2..1);
                 self.runtime_error(
@@ -184,7 +187,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let val = self.pop();
         match val {
             Value::Num(n) => {
-                self.push(Value::Num(-n));
+                self.push(Value::Num(-n))?;
             }
             val => {
                 let span = self.get_span(-1..0);
@@ -203,7 +206,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let a = self.pop();
         match (a, b) {
             (Value::Num(a), Value::Num(b)) => {
-                self.push(Value::Num(a + b));
+                self.push(Value::Num(a + b))?;
                 return Ok(());
             }
             (Value::Object(a), Value::Object(b)) => {
@@ -212,7 +215,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 if let (Some(a), Some(b)) = (a, b) {
                     let concatenated = Object::from(a + b);
                     self.objects.push(concatenated);
-                    self.push(Value::Object(concatenated));
+                    self.push(Value::Object(concatenated))?;
                     return Ok(());
                 }
             }
@@ -272,15 +275,23 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn peek(&self, i: usize) -> Value {
-        self.stack[self.stack.len() - i - 1]
+        self.stack.peek(i).unwrap()
     }
 
     fn pop(&mut self) -> Value {
         self.stack.pop().unwrap()
     }
 
-    fn push(&mut self, value: Value) {
-        self.stack.push(value);
+    fn push(&mut self, value: Value) -> InterpretResult {
+        if self.stack.push(value) {
+            Ok(())
+        } else {
+            self.runtime_error(
+                self.get_span(-1..0),
+                format!("Overflowed the stack trying to push {}", value),
+            );
+            Err(InterpretError::RuntimeError)
+        }
     }
 
     fn function_call(&mut self, closure: ObjClosure, arg_count: u8) -> InterpretResult {
@@ -309,7 +320,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn native_function_call(&mut self, function: NativeFunction, arg_count: u8) -> InterpretResult {
         match function.call(&self.stack[self.stack.len() - arg_count as usize..]) {
             Ok(value) => {
-                self.push(value);
+                self.push(value)?;
                 Ok(())
             }
             Err(CallError::ArityMismatch(arity)) => {
@@ -373,7 +384,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     while self.stack.len() > callframe.base_pointer {
                         self.pop();
                     }
-                    self.push(res);
+                    self.push(res)?;
                     self.ip = callframe.return_addr;
                 }
                 OpCode::Closure => {
@@ -394,7 +405,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     }
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
                     let closure = ObjClosure { function, upvalues };
-                    self.push(closure.into());
+                    self.push(closure.into())?;
                 }
                 OpCode::Call => {
                     let arg_count = self.next_byte();
@@ -432,7 +443,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::GetGlobal => {
                     let index = self.next_byte();
                     let value = self.get_global(index)?;
-                    self.push(value);
+                    self.push(value)?;
                 }
                 OpCode::SetGlobal => {
                     let index = self.next_byte();
@@ -445,7 +456,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.push(self.stack[base_pointer + slot as usize]);
+                    self.push(self.stack[base_pointer + slot as usize])?;
                 }
                 OpCode::GetUpvalue => {
                     todo!()
@@ -455,17 +466,17 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();
-                    self.push(constant);
+                    self.push(constant)?;
                 }
                 OpCode::Nil => {
-                    self.push(Value::Nil);
+                    self.push(Value::Nil)?;
                 }
-                OpCode::True => self.push(Value::Bool(true)),
-                OpCode::False => self.push(Value::Bool(false)),
+                OpCode::True => self.push(Value::Bool(true))?,
+                OpCode::False => self.push(Value::Bool(false))?,
                 OpCode::Negate => self.negate()?,
                 OpCode::Not => {
                     let value = Value::Bool(self.pop().falsey());
-                    self.push(value);
+                    self.push(value)?;
                 }
                 OpCode::Print => {
                     let value = self.pop();
@@ -480,7 +491,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::Equal => {
                     let b = self.pop();
                     let a = self.pop();
-                    self.push(Value::Bool(a == b));
+                    self.push(Value::Bool(a == b))?;
                 }
                 OpCode::Invalid => {
                     unreachable!("Reached invalid opcode at {}", self.ip_offset())
