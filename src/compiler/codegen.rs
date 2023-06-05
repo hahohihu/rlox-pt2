@@ -33,6 +33,12 @@ struct StaticCallFrame {
     base_pointer: usize,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct Upvalue {
+    local: bool,
+    index: u8,
+}
+
 type LocalSymbol = InternedU8;
 struct Compiler<'src, StdErr: Write> {
     chunk: Chunk,
@@ -42,6 +48,7 @@ struct Compiler<'src, StdErr: Write> {
     defined_locals: Vec<LocalSymbol>,
     scope_size: Vec<LocalSymbol>,
     static_call_stack: Vec<StaticCallFrame>,
+    upvalues: Vec<Upvalue>,
 }
 
 pub type CodegenResult<T> = Result<T, ()>;
@@ -97,6 +104,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             defined_locals: Default::default(),
             scope_size: Default::default(),
             static_call_stack: vec![StaticCallFrame { base_pointer: 0 }],
+            upvalues: Default::default(),
         }
     }
 
@@ -160,7 +168,31 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         None
     }
 
-    fn resolve_upvalue(&self, _name: &str) -> Option<u8> {
+    fn add_upvalue(&mut self, upvalue: Upvalue) -> u8 {
+        if let Some((i, _)) = self
+            .upvalues
+            .iter()
+            .enumerate()
+            .find(|(_, upval)| **upval == upvalue)
+        {
+            return i as u8;
+        }
+        todo!("need to get upvalues into function");
+        // also need to manage popping them off, possibly?
+        self.upvalues.push(upvalue);
+        // this probably also crashes but only in extremely degenerate cases (256 static closure captures)
+        (self.upvalues.len() - 1).try_into().unwrap()
+    }
+
+    fn resolve_upvalue(&mut self, name: &str) -> Option<u8> {
+        for window in self.static_call_stack.windows(2).rev() {
+            let low_base_pointer = window[0].base_pointer;
+            let high_base_pointer = window[1].base_pointer;
+            debug_assert!(low_base_pointer < high_base_pointer);
+            if let Some(index) = self.resolve_local(name, low_base_pointer..high_base_pointer) {
+                return Some(self.add_upvalue(Upvalue { local: true, index }));
+            }
+        }
         None
     }
 
