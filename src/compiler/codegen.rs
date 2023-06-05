@@ -31,6 +31,7 @@ use super::parse::UnaryKind;
 
 struct StaticCallFrame {
     base_pointer: usize,
+    upvalues: Vec<Upvalue>
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -48,7 +49,6 @@ struct Compiler<'src, StdErr: Write> {
     defined_locals: Vec<LocalSymbol>,
     scope_size: Vec<LocalSymbol>,
     static_call_stack: Vec<StaticCallFrame>,
-    upvalues: Vec<Upvalue>,
 }
 
 pub type CodegenResult<T> = Result<T, ()>;
@@ -103,8 +103,10 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             interned_locals: Interner::default(),
             defined_locals: Default::default(),
             scope_size: Default::default(),
-            static_call_stack: vec![StaticCallFrame { base_pointer: 0 }],
-            upvalues: Default::default(),
+            static_call_stack: vec![StaticCallFrame {
+                base_pointer: 0,
+                upvalues: vec![],
+            }],
         }
     }
 
@@ -125,12 +127,22 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         self.scope_size.push(0);
     }
 
+    fn begin_function_scope(&mut self) {
+        self.static_call_stack.push(StaticCallFrame {
+            base_pointer: self.defined_locals.len(),
+            upvalues: vec![],
+        });
+
+        self.scope_size.push(0);
+    }
+
     fn end_function_scope(&mut self) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
             // The pop opcodes are redundant because return will handle this for functions
             self.defined_locals.pop().unwrap();
         }
+        self.chunk.emit_return();
     }
 
     fn end_scope(&mut self) {
@@ -168,32 +180,55 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         None
     }
 
-    fn add_upvalue(&mut self, upvalue: Upvalue) -> u8 {
-        if let Some((i, _)) = self
-            .upvalues
+    fn add_upvalue(&mut self, upvalue: Upvalue, callframe_index: usize) -> u8 {
+        let upvalues = &mut self.static_call_stack[callframe_index].upvalues;
+        if let Some((i, _)) = upvalues
             .iter()
             .enumerate()
             .find(|(_, upval)| **upval == upvalue)
         {
             return i as u8;
         }
-        todo!("need to get upvalues into function");
-        // also need to manage popping them off, possibly?
-        self.upvalues.push(upvalue);
+        upvalues.push(upvalue);
         // this probably also crashes but only in extremely degenerate cases (256 static closure captures)
-        (self.upvalues.len() - 1).try_into().unwrap()
+        (upvalues.len() - 1).try_into().unwrap()
+    }
+
+    fn _inner_resolve_upvalue(&mut self, name: &str, callframe_index: usize) -> Option<u8> {
+        if callframe_index == 0 {
+            return None;
+        }
+        let enclosing_callframe = &self.static_call_stack[callframe_index - 1];
+        let callframe = &self.static_call_stack[callframe_index];
+
+        if let Some(local_index) = self.resolve_local(
+            name,
+            enclosing_callframe.base_pointer..callframe.base_pointer,
+        ) {
+            return Some(self.add_upvalue(
+                Upvalue {
+                    local: true,
+                    index: local_index,
+                },
+                callframe_index,
+            ));
+        }
+
+        if let Some(upvalue) = self._inner_resolve_upvalue(name, callframe_index - 1) {
+            return Some(self.add_upvalue(
+                Upvalue {
+                    local: false,
+                    index: upvalue,
+                },
+                callframe_index,
+            ));
+        }
+
+        None
     }
 
     fn resolve_upvalue(&mut self, name: &str) -> Option<u8> {
-        for window in self.static_call_stack.windows(2).rev() {
-            let low_base_pointer = window[0].base_pointer;
-            let high_base_pointer = window[1].base_pointer;
-            debug_assert!(low_base_pointer <= high_base_pointer);
-            if let Some(index) = self.resolve_local(name, low_base_pointer..high_base_pointer) {
-                return Some(self.add_upvalue(Upvalue { local: true, index }));
-            }
-        }
-        None
+        self._inner_resolve_upvalue(name, self.static_call_stack.len() - 1)
     }
 
     fn resolve(&mut self, name: &str) -> (Scope, u8) {
@@ -357,11 +392,8 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         // So skip the function
         let skip = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
 
-        self.static_call_stack.push(StaticCallFrame {
-            base_pointer: self.defined_locals.len(),
-        });
-
-        self.begin_scope(); // fyi: if we ever add recovery, this may break
+        self.begin_function_scope(); // fyi: if we ever add recovery, this may break because of early-returns
+        let function_start = self.chunk.instructions.len();
 
         // mark self so recursive calls work
         self.add_local(&name.data);
@@ -370,22 +402,26 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             self.add_local(&arg.data);
         }
 
-        let function_start = self.chunk.instructions.len();
         self.block(&body.data)?;
         self.end_function_scope();
-        self.static_call_stack.pop().unwrap();
-        self.chunk.emit_return();
+
+        let callframe = self.static_call_stack.pop().unwrap();
 
         self.patch_jump(skip, Chunk::impl_span())?;
 
         let function = ObjFunction {
             arity: args.len().try_into().unwrap(),
+            upvalues: callframe.upvalues.len() as u8,
             addr: function_start,
             name: UnsafeString::from(name.data.as_str()),
         };
 
         let constant = self.chunk.add_constant(function.into());
         emit_bytes!(self.chunk, name.span; OpCode::Closure, constant);
+
+        for upvalue in callframe.upvalues {
+            emit_bytes!(self.chunk, Chunk::impl_span(); upvalue.local as u8, upvalue.index);
+        }
 
         if self.in_global_scope() {
             let nameid = self.chunk.globals.add_or_get(&name.data);
@@ -556,6 +592,33 @@ mod tests {
             }
         }
         print foo();
+        "
+    }
+
+    snap_codegen! {
+        closure_local,
+        "
+        fun outer() {
+            var a = 1;
+            var b = 2;
+            fun middle() {
+              var c = 3;
+              var d = 4;
+              fun inner() {
+                print a + c + b + d;
+              }
+            }
+          }
+        "
+    }
+
+    snap_codegen! {
+        closure_global,
+        "
+        var a = 1;
+        fun closure() {
+            print a;
+        }
         "
     }
 }

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use num_enum::{FromPrimitive, IntoPrimitive};
 
-use super::{interner::Interner, value::Value};
+use super::{interner::Interner, value::Value, try_as::TryAs, function::ObjFunction};
 use crate::common::ui::Span;
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
@@ -138,11 +138,21 @@ impl Chunk {
 
     fn closure(&self, offset: &mut usize, mut stdout: impl Write) {
         let value = self.instructions[*offset + 1];
-        let fun = self.constants[value as usize];
+        let fun: ObjFunction = self.constants[value as usize].unwrap_as();
         writeln!(stdout, "{:<16} {}", "CLOSURE", fun).unwrap();
         *offset += 2;
+        for _ in 0..fun.upvalues {
+            let local = if self.instructions[*offset] == 1 {
+                "local"
+            } else {
+                "upvalue"
+            };
+            let index = self.instructions[*offset + 1];
+            writeln!(stdout, "{:0>4}                               {} {}", *offset, local, index).unwrap();
+            *offset += 2;
+        }
     }
-
+    
     pub fn disassemble_instruction(
         &self,
         mut offset: usize,

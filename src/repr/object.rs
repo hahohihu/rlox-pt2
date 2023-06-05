@@ -81,8 +81,8 @@ impl Display for ObjectKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String { str } => str.fmt(f),
-            Self::Function { fun } => write!(f, "<function {}>", fun.name),
-            Self::Closure { fun } => write!(f, "<function {}>", fun.function.name),
+            Self::Function { fun } => fun.fmt(f),
+            Self::Closure { fun } => fun.function.fmt(f),
             Self::NativeFunction { fun } => fun.fmt(f),
         }
     }

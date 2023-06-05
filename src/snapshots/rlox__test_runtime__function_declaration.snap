@@ -1,9 +1,9 @@
 ---
 source: src/main.rs
-expression: "crate::common::util::mock_interpret(\"\n        fun foo() {}\n\n        print foo;\n        \")"
+expression: "crate::common::test_util::mock_interpret(\"\n        fun foo() {}\n\n        print foo;\n        \")"
 ---
 stdout:
-<function foo>
+<function foo @ 3>
 
 
 stderr:

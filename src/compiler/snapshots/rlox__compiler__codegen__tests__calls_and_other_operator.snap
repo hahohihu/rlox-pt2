@@ -9,7 +9,7 @@ bytecode:
 0005 return  RETURN
 0006         NIL
 0007 |       RETURN
-0008 foo     CLOSURE          <function foo>
+0008 foo     CLOSURE          <function foo @ 3>
 0010 |       DEFINE_GLOBAL       1 'foo'
 0012 foo     GET_GLOBAL          1 'foo'
 0014 |       CALL             0

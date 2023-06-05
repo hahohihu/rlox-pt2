@@ -1,0 +1,20 @@
+---
+source: src/compiler/codegen.rs
+expression: "crate::common::test_util::mock_codegen(\"\n        var a = 1;\n        fun closure() {\n            print a;\n        }\n        \")"
+---
+bytecode:
+==== test.lox ====
+0000 1       CONSTANT            0 '1'
+0002 a       DEFINE_GLOBAL       1 'a'
+0004         JUMP_REL         5
+0007 a       GET_GLOBAL          1 'a'
+0009         PRINT
+0010 |       NIL
+0011 |       RETURN
+0012 closure CLOSURE          <function closure @ 7>
+0014 |       DEFINE_GLOBAL       2 'closure'
+0016         NIL
+0017 |       RETURN
+
+
+
