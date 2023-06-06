@@ -16,18 +16,20 @@ pub enum OpCode {
     // 1 follow bytes ====
     Constant, // 1: a constant index
     Call,
-    Closure,
     // 2 follow bytes ====
     JumpRelIfFalse,
     JumpRelIfTrue,
     JumpRel,
     Loop,
+    // variable-length
+    Closure,
     // No follow bytes but data-dependent
     // Unary
     Negate,
     Not,
     Print,
     Pop,
+    CloseUpvalue,
     GetGlobal,
     DefineGlobal,
     SetGlobal,
@@ -198,6 +200,7 @@ impl Chunk {
             OpCode::Less => simple("LESS"),
             OpCode::Print => simple("PRINT"),
             OpCode::Pop => simple("POP"),
+            OpCode::CloseUpvalue => simple("CLOSE_UPVALUE"),
             OpCode::DefineGlobal => self.global_instruction("DEFINE_GLOBAL", &mut offset, stdout),
             OpCode::GetGlobal => self.global_instruction("GET_GLOBAL", &mut offset, stdout),
             OpCode::SetGlobal => self.global_instruction("SET_GLOBAL", &mut offset, stdout),

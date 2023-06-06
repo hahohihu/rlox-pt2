@@ -144,6 +144,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn end_function_scope(&mut self) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
+            // todo: not clear this works in light of upvalues
             // The pop opcodes are redundant because return will handle this for functions
             self.defined_locals.pop().unwrap();
         }
@@ -153,8 +154,12 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn end_scope(&mut self) {
         let size = self.scope_size.pop().unwrap();
         for _ in 0..size {
-            self.chunk.emit_impl_byte(OpCode::Pop);
-            self.defined_locals.pop().unwrap();
+            let local = self.defined_locals.pop().unwrap();
+            if local.captured {
+                self.chunk.emit_impl_byte(OpCode::CloseUpvalue);
+            } else {
+                self.chunk.emit_impl_byte(OpCode::Pop);
+            }
         }
     }
 

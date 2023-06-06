@@ -45,6 +45,7 @@ struct VM<'src, Stderr, Stdout> {
     objects: Vec<Object>,
     /// Chunk is the source of truth for indices
     globals: Vec<Option<Value>>,
+    open_upvalues: Option<ValidPtr<ObjUpvalue>>,
 }
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
@@ -79,6 +80,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             stderr,
             stdout,
             globals: vec![],
+            open_upvalues: None,
         }
     }
 
@@ -357,7 +359,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ObjUpvalue {
-        ObjUpvalue { value }
+        // let prev = None;
+        let current = self.open_upvalues;
+        todo!()
+        // ObjUpvalue { value }
     }
 
     fn run(&mut self) -> InterpretResult {
@@ -410,6 +415,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
                     let closure = ObjClosure { function, upvalues };
                     self.push(closure.into())?;
+                }
+                OpCode::CloseUpvalue => {
+                    todo!()
                 }
                 OpCode::Call => {
                     let arg_count = self.next_byte();
