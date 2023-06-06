@@ -31,7 +31,7 @@ impl ObjFunction {
 #[derive(Copy, Clone, Debug)]
 pub struct ObjClosure {
     pub function: ObjFunction,
-    pub upvalues: ValidPtr<[ObjUpvalue]>,
+    pub upvalues: ValidPtr<[ValidPtr<ObjUpvalue>]>,
 }
 
 impl PartialEq for ObjClosure {

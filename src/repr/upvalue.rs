@@ -5,13 +5,12 @@ use super::{valid::ValidPtr, value::Value};
 #[derive(Copy, Clone, Debug)]
 pub struct ObjUpvalue {
     pub value: ValidPtr<Value>,
+    pub closed: Value,
     pub next: Option<ValidPtr<ObjUpvalue>>,
 }
 
 impl ObjUpvalue {
-    pub unsafe fn free(self) {
-        ValidPtr::free(self.value);
-    }
+    pub unsafe fn free(self) {}
 }
 
 impl PartialEq for ObjUpvalue {

@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(\"\n        fun a(n) {\n            print n;\n            fun b(n) {\n                fun c(x, y) {\n                    print a;\n                    print b;\n                    print x;\n                    print y;\n                    print n;\n                }\n                print n;\n                return c;\n            }\n            return b;\n        }\n        var f = a(1);\n        var f2 = f(2);\n        f2(3, 4);\n        \")"
+---
+stdout:
+1
+2
+<function a @ 3>
+<function b @ 9>
+3
+4
+2
+
+
+stderr:
+
+

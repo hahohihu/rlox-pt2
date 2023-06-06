@@ -59,7 +59,8 @@ impl Add<UnsafeString> for UnsafeString {
 
 impl UnsafeString {
     pub unsafe fn free(self) {
-        ValidPtr::free(self.str);
+        alloc::trace!("Freeing string '{self}'");
+        drop(Box::from_raw(self.str.as_ptr()));
     }
 }
 

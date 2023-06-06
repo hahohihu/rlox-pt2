@@ -1,0 +1,19 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(\"\n        fun a(a1, a2) {\n            fun b(b3, b4) {\n                fun c(c5, c6) {\n                    print a;\n                    print a1;\n                    print a2;\n                    print b;\n                    print b3;\n                    print b4;\n                    print c;\n                    print c5;\n                    print c6;\n                }\n                return c;\n            }\n            return b;\n        }\n        a(1, 2)(3, 4)(5, 6);\n        \")"
+---
+stdout:
+<function a @ 3>
+1
+2
+<function b @ 6>
+3
+4
+<function c @ 9>
+5
+6
+
+
+stderr:
+
+

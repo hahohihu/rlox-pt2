@@ -1,7 +1,8 @@
-use std::{ops::Deref, ptr::NonNull};
+use std::{ops::Deref, ptr::NonNull, fmt::{Display, Debug}};
+use super::alloc;
 
 #[repr(transparent)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 /// SAFETY: The presiding assumption here is that we basically just got this from Box and it's okay to use,
 ///     but it needs to be a raw pointer so we can share it and garbage collect efficiently
 pub struct ValidPtr<T: ?Sized>(NonNull<T>);
@@ -13,18 +14,26 @@ impl<T: ?Sized> Clone for ValidPtr<T> {
 }
 impl<T: ?Sized> Copy for ValidPtr<T> {}
 
-impl<T: ?Sized> ValidPtr<T> {
+impl<T: Debug> ValidPtr<T> {
+    pub fn new(data: T) -> Self {
+        alloc::trace!("Allocating {:?}", data);
+        Self::from(Box::new(data))
+    }
+}
+
+impl<T: ?Sized + Debug> ValidPtr<T> {
     pub fn as_ptr(&self) -> *mut T {
         self.0.as_ptr()
     }
 
     pub unsafe fn free(ptr: Self) {
+        alloc::trace!("Freeing {:?}", &*ptr);
         drop(Box::from_raw(ptr.0.as_ptr()))
     }
 
     /// ValidPtr frees using Box::from_raw, so this must either come from the same allocation as Box, or must not be freed through ValidPtr
-    pub unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
-        Self(ptr)
+    pub unsafe fn from_ptr(ptr: *mut T) -> Self {
+        Self(NonNull::new_unchecked(ptr))
     }
 }
 

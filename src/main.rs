@@ -890,4 +890,97 @@ mod test_runtime {
           outer();
         "#
     }
+
+    snap_interpret! {
+        escaping_closure,
+        r#"
+        fun outer() {
+            var x = 1;
+            fun inner() {
+                print x;
+            }
+            return inner;
+        }
+        var filler1 = 0;
+        var filler2 = 0;
+        var filler3 = 0;
+        var filler4 = 0;
+        outer()();
+        "#
+    }
+
+    snap_interpret! {
+        escaping_argument,
+        "
+        fun outer(n) {
+            fun inner() {
+                print n;
+            }
+            return inner;
+        }
+        var filler1 = 0;
+        var filler2 = 0;
+        var filler3 = 0;
+        var filler4 = 0;
+        outer(1)();
+        "
+    }
+
+    snap_interpret! {
+        various_nested_closures,
+        "
+        fun a(n) {
+            print n;
+            fun b(n) {
+                fun c(x, y) {
+                    print a;
+                    print b;
+                    print x;
+                    print y;
+                    print n;
+                }
+                print n;
+                return c;
+            }
+            return b;
+        }
+        var f = a(1);
+        var f2 = f(2);
+        f2(3, 4);
+        "
+    }
+
+    snap_interpret! {
+        shadowing_function_with_parameter,
+        "
+        fun a(a) {
+            print a;
+        }
+        a(1);
+        "
+    }
+
+    snap_interpret! {
+        more_nested_closures,
+        "
+        fun a(a1, a2) {
+            fun b(b3, b4) {
+                fun c(c5, c6) {
+                    print a;
+                    print a1;
+                    print a2;
+                    print b;
+                    print b3;
+                    print b4;
+                    print c;
+                    print c5;
+                    print c6;
+                }
+                return c;
+            }
+            return b;
+        }
+        a(1, 2)(3, 4)(5, 6);
+        "
+    }
 }

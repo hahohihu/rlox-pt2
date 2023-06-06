@@ -1,5 +1,5 @@
 mod stack;
-use std::{io::Write, mem::size_of, ops::Range, ptr::NonNull};
+use std::{io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -50,6 +50,7 @@ struct VM<'src, Stderr, Stdout> {
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
     fn drop(&mut self) {
+        debug_assert!(self.open_upvalues.is_none());
         for object in &self.objects {
             unsafe {
                 // SAFETY: See safety invariant on objects
@@ -262,11 +263,15 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
         println!("==== STACK ====");
-        let stack_len = self.base_pointer();
-        for value in &self.stack[stack_len..] {
+        for value in &self.stack[..] {
             println!("{value}");
         }
-        println!("=================");
+        println!("==== OPEN UPVALUES ====");
+        let mut it = self.open_upvalues;
+        while let Some(upvalue) = it {
+            println!("{}", *upvalue.value);
+            it = upvalue.next;
+        }
         println!("==== GLOBALS ====");
         for (i, v) in self.globals.iter().enumerate() {
             if let Some(v) = v {
@@ -358,11 +363,54 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ObjUpvalue {
-        // let prev = None;
-        // let _current = self.open_upvalues;
-        // todo!()
-        ObjUpvalue { value, next: None }
+    fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ValidPtr<ObjUpvalue> {
+        let mut prev = None;
+        let mut current = self.open_upvalues;
+        while let Some(upvalue) = current {
+            if upvalue.value.as_ptr() <= value.as_ptr() {
+                break;
+            }
+            prev = current;
+            current = upvalue.next;
+        }
+
+        if let Some(upvalue) = current {
+            if upvalue.value.as_ptr() == value.as_ptr() {
+                return upvalue;
+            }
+        }
+
+        let new_upvalue = ValidPtr::new(ObjUpvalue {
+            value,
+            closed: Value::Num(f64::MAX),
+            next: current,
+        });
+        if let Some(prev) = prev {
+            unsafe {
+                (*prev.as_ptr()).next = Some(new_upvalue);
+            }
+        } else {
+            self.open_upvalues = Some(new_upvalue);
+        }
+        new_upvalue
+    }
+
+    fn close_top_upvalue(&mut self) {
+        // this doesn't take a parameter because:
+        //   a: it's wrong it only pop a single one off - when a function returns and when it closes upvalues, it must be the top value
+        //   b: stacked borrows make &mut awkward to deal with
+        let value = unsafe { ValidPtr::from_ptr(self.stack.last_mut().unwrap()) };
+        while let Some(upvalue) = self.open_upvalues {
+            if upvalue.value.as_ptr() < value.as_ptr() {
+                break;
+            }
+            unsafe {
+                (*upvalue.as_ptr()).closed = *value;
+                (*upvalue.as_ptr()).value = ValidPtr::from_ptr(&mut (*upvalue.as_ptr()).closed);
+            }
+            self.objects.push(Object::from(upvalue));
+            self.open_upvalues = upvalue.next;
+        }
     }
 
     fn run(&mut self) -> InterpretResult {
@@ -387,6 +435,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     };
                     let res = self.pop();
                     while self.stack.len() > callframe.base_pointer {
+                        self.close_top_upvalue();
                         self.pop();
                     }
                     self.push(res)?;
@@ -400,12 +449,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         let index = self.next_byte();
                         if local {
                             let stack_value = (&mut self.stack[index as usize]) as *mut _;
-                            let ptr = unsafe {
-                                // This is currently unsound because we don't close off the closures
-                                // Once we close them off, it will be sound since these pointers won't live past the stack getting popped.
-                                // (technically, not unsound per se since it will be using valid initialized memory - miri won't detect this)
-                                ValidPtr::from_ptr(NonNull::new_unchecked(stack_value))
-                            };
+                            let ptr = unsafe { ValidPtr::from_ptr(stack_value) };
                             upvalues.push(self.capture_upvalue(ptr));
                         } else {
                             let outer = self.callframe.last().unwrap().closure;
@@ -417,7 +461,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.push(closure.into())?;
                 }
                 OpCode::CloseUpvalue => {
-                    todo!()
+                    self.close_top_upvalue();
+                    self.pop();
                 }
                 OpCode::Call => {
                     let arg_count = self.next_byte();

@@ -44,8 +44,10 @@ impl Object {
 
     pub unsafe fn free(self) {
         alloc::trace!("Freeing {self}");
-        self.inner.kind.free();
+        let kind = self.inner.kind;
+        // Having this out of order allows alloc::trace to use display until the end
         ValidPtr::free(self.inner);
+        kind.free();
     }
 
     pub fn kind(self) -> ObjectKind {
@@ -76,7 +78,7 @@ pub enum ObjectKind {
     Function { fun: ObjFunction },
     Closure { fun: ObjClosure },
     NativeFunction { fun: NativeFunction },
-    Upvalue { upvalue: ObjUpvalue },
+    Upvalue { upvalue: ValidPtr<ObjUpvalue> },
 }
 
 impl Display for ObjectKind {
@@ -123,6 +125,12 @@ impl From<String> for ObjectKind {
     }
 }
 
+impl From<ValidPtr<ObjUpvalue>> for ObjectKind {
+    fn from(upvalue: ValidPtr<ObjUpvalue>) -> Self {
+        ObjectKind::Upvalue { upvalue }
+    }
+}
+
 impl TryAs<ObjFunction> for ObjectKind {
     fn try_as(self) -> Option<ObjFunction> {
         match self {
@@ -157,7 +165,10 @@ impl ObjectKind {
             Self::Function { fun } => fun.free(),
             Self::Closure { fun } => fun.free(),
             Self::NativeFunction { fun } => fun.free(),
-            Self::Upvalue { upvalue } => upvalue.free(),
+            Self::Upvalue { upvalue } => {
+                upvalue.free();
+                ValidPtr::free(upvalue);
+            },
         }
     }
 }
