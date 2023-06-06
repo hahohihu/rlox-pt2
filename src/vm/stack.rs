@@ -1,19 +1,14 @@
-use std::{
-    cell::UnsafeCell,
-    mem::{transmute, MaybeUninit},
-    slice::SliceIndex,
-};
+use std::{cell::UnsafeCell, mem::transmute};
 
 use crate::repr::value::Value;
 
-type StackValue = UnsafeCell<MaybeUninit<Value>>;
 const MAX_SIZE: usize = 4096;
 #[derive(Debug)]
 pub struct FixedStack {
     // This abomination is necessary because of aliasing rules
     // In particular, we cannot take a &mut because we have pointers into the stack that mutate it
     // MaybeUninit is mostly an optimization, since we already have len
-    stack: [StackValue; MAX_SIZE],
+    stack: [UnsafeCell<Value>; MAX_SIZE],
     len: UnsafeCell<usize>,
 }
 
@@ -21,7 +16,7 @@ impl FixedStack {
     pub fn new() -> Self {
         // this is just used to initialize the array, and is not actually mutated
         #[allow(clippy::declare_interior_mutable_const)]
-        const UNINIT: StackValue = UnsafeCell::new(MaybeUninit::uninit());
+        const UNINIT: UnsafeCell<Value> = UnsafeCell::new(Value::Num(f64::MAX));
         Self {
             stack: [UNINIT; MAX_SIZE],
             len: UnsafeCell::new(0),
@@ -40,7 +35,7 @@ impl FixedStack {
                 return false;
             }
 
-            (*self.stack[len].get()).write(value);
+            *self.stack[len].get() = value;
             *self.len.get() += 1;
             true
         }
@@ -76,16 +71,15 @@ impl FixedStack {
         res
     }
 
-    /// index must be an index to a value already pushed
     pub unsafe fn get_ptr(&self, index: usize) -> *mut Value {
         // MaybeUninit is repr(transparent)
-        transmute(self.stack[index].get())
+        self.stack[index].get()
     }
 
     /// SAFETY: The burden of following aliasing rules is on the callee
     ///         With great power comes great responsibility
     pub unsafe fn slice(&self) -> &[Value] {
-        // UnsafeCell is repr(transparent) too
+        // UnsafeCell is repr(transparent)
         transmute(&self.stack[..self.len()])
     }
 }
