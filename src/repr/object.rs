@@ -78,6 +78,8 @@ pub enum ObjectKind {
     Function { fun: ObjFunction },
     Closure { fun: ObjClosure },
     NativeFunction { fun: NativeFunction },
+    // this is a redundant layer of pointer - the upvalue does need to be pinned since it's self-referential
+    // but Object is already in a pointer, so it's somewhat wasteful to store this in one too.
     Upvalue { upvalue: ValidPtr<ObjUpvalue> },
 }
 
