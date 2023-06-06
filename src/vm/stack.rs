@@ -1,18 +1,19 @@
 use std::{
     cell::UnsafeCell,
-    mem::{transmute, MaybeUninit},
-    ops::{Deref, DerefMut},
+    mem::{transmute, MaybeUninit, size_of},
+    ops::{Deref, DerefMut}, slice::SliceIndex,
 };
 
 use crate::repr::value::Value;
 
+type StackValue = UnsafeCell<MaybeUninit<Value>>;
 const MAX_SIZE: usize = 4096;
 #[derive(Debug)]
 pub struct FixedStack {
     // This abomination is necessary because of aliasing rules
     // In particular, we cannot take a &mut because we have pointers into the stack that mutate it
     // MaybeUninit is mostly an optimization, since we already have len
-    stack: [UnsafeCell<MaybeUninit<Value>>; MAX_SIZE],
+    stack: [StackValue; MAX_SIZE],
     len: UnsafeCell<usize>,
 }
 
@@ -20,7 +21,7 @@ impl FixedStack {
     pub fn new() -> Self {
         // this is just used to initialize the array, and is not actually mutated
         #[allow(clippy::declare_interior_mutable_const)]
-        const UNINIT: UnsafeCell<MaybeUninit<Value>> = UnsafeCell::new(MaybeUninit::uninit());
+        const UNINIT: StackValue = UnsafeCell::new(MaybeUninit::uninit());
         Self {
             stack: [UNINIT; MAX_SIZE],
             len: UnsafeCell::new(0),
@@ -59,6 +60,16 @@ impl FixedStack {
         }
     }
 
+    pub fn get(&self, i: usize) -> Option<Value> {
+        if i >= self.len() {
+            None
+        } else {
+            unsafe {
+                Some(*self.get_ptr(i))
+            }
+        }
+    }
+
     pub fn pop(&self) -> Option<Value> {
         let res = self.peek(0);
         if let Some(_) = res {
@@ -74,16 +85,15 @@ impl FixedStack {
         // MaybeUninit is repr(transparent)
         transmute(self.stack[index].get())
     }
-}
 
-impl Deref for FixedStack {
-    type Target = [Value];
-
-    fn deref(&self) -> &Self::Target {
-        unsafe {
-            // this is sound: https://stackoverflow.com/questions/55313460/is-it-sound-to-transmute-a-maybeuninitt-n-to-maybeuninitt-n
-            transmute(&self.stack[..*self.len.get()])
-        }
+    /// SAFETY: indices must be valid,
+    ///         and the burden of following aliasing rules is on the callee
+    pub unsafe fn slice<I>(&self, index: I) -> &[Value] 
+        where I: SliceIndex<[StackValue], Output = [StackValue]>,
+    {
+        const _: () = assert!(size_of::<StackValue>() == size_of::<Value>());
+        // UnsafeCell is repr(transparent) too
+        transmute(&self.stack[index])
     }
 }
 

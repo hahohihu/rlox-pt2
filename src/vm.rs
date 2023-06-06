@@ -263,7 +263,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
         println!("==== STACK ====");
-        for value in &self.stack[..] {
+        for value in unsafe { self.stack.slice(..) } {
             println!("{value}");
         }
         println!("==== OPEN UPVALUES ====");
@@ -325,7 +325,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn native_function_call(&mut self, function: NativeFunction, arg_count: u8) -> InterpretResult {
-        match function.call(&self.stack[self.stack.len() - arg_count as usize..]) {
+        match function.call(unsafe { self.stack.slice(self.stack.len() - arg_count as usize..) }) {
             Ok(value) => {
                 self.push(value)?;
                 Ok(())
@@ -516,7 +516,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.push(self.stack[base_pointer + slot as usize])?;
+                    self.push(self.stack.get(base_pointer + slot as usize).unwrap())?;
                 }
                 OpCode::GetUpvalue => {
                     let slot = self.next_byte();
