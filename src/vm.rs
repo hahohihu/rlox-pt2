@@ -409,7 +409,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                             upvalues.push(self.capture_upvalue(ptr));
                         } else {
                             let outer = self.callframe.last().unwrap().closure;
-                            upvalues.push(outer.upvalues.as_ref()[index as usize]);
+                            upvalues.push((&*outer.upvalues)[index as usize]);
                         }
                     }
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
@@ -473,15 +473,15 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::GetUpvalue => {
                     let slot = self.next_byte();
                     let closure = self.callframe.last().unwrap().closure;
-                    let value = closure.upvalues.as_ref()[slot as usize];
-                    self.push(*value.as_ref())?;
+                    let value = closure.upvalues[slot as usize];
+                    self.push(*value.value)?;
                 }
                 OpCode::SetUpvalue => {
                     let slot = self.next_byte();
                     let closure = self.callframe.last().unwrap().closure;
                     unsafe {
                         let upval = (*closure.upvalues.as_ptr())[slot as usize];
-                        (*upval.as_ptr()) = self.peek(0);
+                        (*upval.value.as_ptr()) = self.peek(0);
                     }
                 }
                 OpCode::Constant => {

@@ -15,13 +15,13 @@ pub struct UnsafeString {
 
 impl Display for UnsafeString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.str.as_ref().fmt(f)
+        self.str.fmt(f)
     }
 }
 
 impl PartialEq for UnsafeString {
     fn eq(&self, other: &Self) -> bool {
-        self.str.as_ref() == other.str.as_ref()
+        *self.str == *other.str
     }
 }
 
@@ -29,7 +29,7 @@ impl Eq for UnsafeString {}
 
 impl Hash for UnsafeString {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.str.as_ref().hash(state)
+        self.str.hash(state)
     }
 }
 
@@ -51,7 +51,7 @@ impl From<&str> for UnsafeString {
 impl Add<UnsafeString> for UnsafeString {
     type Output = UnsafeString;
     fn add(self, rhs: UnsafeString) -> Self::Output {
-        let concatenated = String::from(self.str.as_ref()) + rhs.str.as_ref();
+        let concatenated = String::from(&*self.str) + &*rhs.str;
         alloc::trace!("Allocating string '{concatenated}'");
         Self::from(concatenated)
     }
@@ -59,16 +59,12 @@ impl Add<UnsafeString> for UnsafeString {
 
 impl UnsafeString {
     pub unsafe fn free(self) {
-        self.str.free()
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.str.as_ref()
+        ValidPtr::free(self.str);
     }
 }
 
 impl Borrow<str> for UnsafeString {
     fn borrow(&self) -> &str {
-        self.as_str()
+        &self.str
     }
 }

@@ -15,13 +15,13 @@ pub struct Object {
 
 impl PartialEq for Object {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.as_ref() == other.inner.as_ref()
+        *self.inner == *other.inner
     }
 }
 
 impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.inner.as_ref().kind.fmt(f)
+        self.inner.kind.fmt(f)
     }
 }
 
@@ -39,17 +39,17 @@ impl Object {
     }
 
     pub fn typename(self) -> &'static str {
-        self.inner.as_ref().kind.typename()
+        self.inner.kind.typename()
     }
 
     pub unsafe fn free(self) {
         alloc::trace!("Freeing {self}");
-        self.inner.as_ref().kind.free();
-        self.inner.free();
+        self.inner.kind.free();
+        ValidPtr::free(self.inner);
     }
 
     pub fn kind(self) -> ObjectKind {
-        self.inner.as_ref().kind
+        self.inner.kind
     }
 }
 

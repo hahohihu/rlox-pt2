@@ -44,6 +44,6 @@ impl Eq for ObjClosure {}
 
 impl ObjClosure {
     pub unsafe fn free(&self) {
-        self.upvalues.free();
+        ValidPtr::free(self.upvalues);
     }
 }
