@@ -908,6 +908,7 @@ mod test_runtime {
             print x;
             x = 5;
             f();
+            print x;
             x = 6;
             print x;
         }

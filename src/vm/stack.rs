@@ -1,7 +1,7 @@
 use std::{
     cell::UnsafeCell,
-    mem::{transmute, MaybeUninit, size_of},
-    ops::{Deref, DerefMut}, slice::SliceIndex,
+    mem::{transmute, MaybeUninit},
+    slice::SliceIndex,
 };
 
 use crate::repr::value::Value;
@@ -29,9 +29,7 @@ impl FixedStack {
     }
 
     pub fn len(&self) -> usize {
-        unsafe {
-            *self.len.get()
-        }
+        unsafe { *self.len.get() }
     }
 
     #[must_use]
@@ -64,9 +62,7 @@ impl FixedStack {
         if i >= self.len() {
             None
         } else {
-            unsafe {
-                Some(*self.get_ptr(i))
-            }
+            unsafe { Some(*self.get_ptr(i)) }
         }
     }
 
@@ -86,14 +82,10 @@ impl FixedStack {
         transmute(self.stack[index].get())
     }
 
-    /// SAFETY: indices must be valid,
-    ///         and the burden of following aliasing rules is on the callee
-    pub unsafe fn slice<I>(&self, index: I) -> &[Value] 
-        where I: SliceIndex<[StackValue], Output = [StackValue]>,
-    {
-        const _: () = assert!(size_of::<StackValue>() == size_of::<Value>());
+    /// SAFETY: The burden of following aliasing rules is on the callee
+    ///         With great power comes great responsibility
+    pub unsafe fn slice(&self) -> &[Value] {
         // UnsafeCell is repr(transparent) too
-        transmute(&self.stack[index])
+        transmute(&self.stack[..self.len()])
     }
 }
-

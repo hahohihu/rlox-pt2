@@ -1,5 +1,5 @@
-use std::{ops::Deref, ptr::NonNull, fmt::{Display, Debug}};
 use super::alloc;
+use std::{fmt::Debug, ops::Deref, ptr::NonNull};
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq)]

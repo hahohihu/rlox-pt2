@@ -168,7 +168,7 @@ impl ObjectKind {
             Self::Upvalue { upvalue } => {
                 upvalue.free();
                 ValidPtr::free(upvalue);
-            },
+            }
         }
     }
 }
