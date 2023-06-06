@@ -457,8 +457,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         }
                     }
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
-                    let closure = ObjClosure { function, upvalues };
-                    self.push(closure.into())?;
+                    let closure = Object::from(ObjClosure { function, upvalues });
+                    self.objects.push(closure);
+                    self.push(Value::from(closure))?;
                 }
                 OpCode::CloseUpvalue => {
                     self.close_top_upvalue();
