@@ -892,6 +892,28 @@ mod test_runtime {
     }
 
     snap_interpret! {
+        stack_assign, // miri doesn't like this, even with tree borrows
+        "
+        {
+            var x = 0;
+            fun inner() {
+                x = 1;
+            }
+            x = 2;
+            print x;
+            x = 3;
+            var f = inner;
+            x = 4;
+            print x;
+            x = 5;
+            f();
+            x = 6;
+            print x;
+        }
+        "
+    }
+
+    snap_interpret! {
         escaping_closure,
         r#"
         fun outer() {
