@@ -1007,4 +1007,17 @@ mod test_runtime {
         a(1, 2)(3, 4)(5, 6);
         "
     }
+
+    snap_interpret! {
+        object_equality,
+        "
+        print clock == clock;
+        fun foo() {}
+        print foo == foo;
+        fun bar() {}
+        print foo != bar;
+        print foo != clock;
+        print foo != 1;
+        "
+    }
 }
