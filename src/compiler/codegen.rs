@@ -40,14 +40,19 @@ struct Upvalue {
     index: u8,
 }
 
+struct Local {
+    depth: u8,
+    captured: bool,
+}
+
 type LocalSymbol = InternedU8;
 struct Compiler<'src, StdErr: Write> {
     chunk: Chunk,
     source: &'src str,
     stderr: StdErr,
     interned_locals: Interner,
-    defined_locals: Vec<LocalSymbol>,
-    scope_size: Vec<LocalSymbol>,
+    defined_locals: Vec<Local>,
+    scope_size: Vec<usize>,
     static_call_stack: Vec<StaticCallFrame>,
 }
 
@@ -153,9 +158,16 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         }
     }
 
+    fn define_local(&mut self, name: &str) -> u8 {
+        self.interned_locals.add_or_get(name)
+    }
+
     fn add_local(&mut self, name: &str) {
-        let nameid = self.interned_locals.add_or_get(name);
-        self.defined_locals.push(nameid);
+        let nameid = self.define_local(name);
+        self.defined_locals.push(Local {
+            depth: nameid,
+            captured: false,
+        });
         let size = self.scope_size.last_mut().unwrap();
         *size += 1;
     }
@@ -163,14 +175,14 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
     fn resolve_local(
         &self,
         name: &str,
-        local_range: impl SliceIndex<[u8], Output = [u8]>,
+        local_range: impl SliceIndex<[Local], Output = [Local]>,
     ) -> Option<LocalSymbol> {
         let nameid = self.interned_locals.get(name)?;
         // offset is needed to handle functions
         // i - base_pointer for offset, which the VM will use with base_pointer + i
         // there is conceptual overlap, but the previous bp is static, where the latter bp is dynamic
         for (i, local) in self.defined_locals[local_range].iter().enumerate().rev() {
-            if nameid == *local {
+            if nameid == local.depth {
                 // putting function code inline + jumping over it is slightly sus with closures or self-modifying code, but I don't think the latter will happen
                 // and iirc, closure code will be modified such that they don't need duplication
                 // todo: this will actually crash if it doesn't fit
@@ -205,6 +217,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             name,
             enclosing_callframe.base_pointer..callframe.base_pointer,
         ) {
+            self.defined_locals[local_index as usize].captured = true;
             return Some(self.add_upvalue(
                 Upvalue {
                     local: true,
