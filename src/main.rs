@@ -893,6 +893,8 @@ mod test_runtime {
 
     snap_interpret! {
         stack_assign, // miri doesn't like this, even with tree borrows
+                      // open_upvalues and the stack are both implicated here
+                      // we can't take pointers to them _and_ use them as &mut
         "
         {
             var x = 0;
