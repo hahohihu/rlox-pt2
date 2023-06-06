@@ -1,4 +1,4 @@
-use super::chunk::OpCode;
+use crate::repr::chunk::OpCode;
 
 #[derive(Copy, Clone)]
 pub enum Scope {

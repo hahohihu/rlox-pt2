@@ -1,3 +1,5 @@
+mod scope;
+
 use std::io::Write;
 
 use std::slice::SliceIndex;
@@ -12,12 +14,13 @@ use crate::repr::chunk::Chunk;
 use crate::repr::chunk::OpCode;
 use crate::repr::native_function::CallError;
 use crate::repr::native_function::NativeFunction;
-use crate::repr::scope::Scope;
 use crate::repr::string::UnsafeString;
 use crate::repr::value::Value;
 
 use crate::common::ui;
 use crate::common::ui::*;
+
+use self::scope::Scope;
 
 use super::parse::BinaryExpr;
 use super::parse::BinaryKind;
