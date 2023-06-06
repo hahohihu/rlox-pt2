@@ -360,9 +360,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
 
     fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ObjUpvalue {
         // let prev = None;
-        let current = self.open_upvalues;
-        todo!()
-        // ObjUpvalue { value }
+        // let _current = self.open_upvalues;
+        // todo!()
+        ObjUpvalue { value, next: None }
     }
 
     fn run(&mut self) -> InterpretResult {

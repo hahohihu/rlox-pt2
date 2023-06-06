@@ -5,7 +5,7 @@ use super::{valid::ValidPtr, value::Value};
 #[derive(Copy, Clone, Debug)]
 pub struct ObjUpvalue {
     pub value: ValidPtr<Value>,
-    pub next: Option<ValidPtr<ObjUpvalue>>
+    pub next: Option<ValidPtr<ObjUpvalue>>,
 }
 
 impl ObjUpvalue {
