@@ -399,7 +399,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         // this doesn't take a parameter because:
         //   a: it's wrong it only pop a single one off - when a function returns and when it closes upvalues, it must be the top value
         //   b: stacked borrows make &mut awkward to deal with
-        let value = unsafe { ValidPtr::from_ptr(self.stack.last_mut().unwrap()) };
+        let value = unsafe { ValidPtr::from_ptr(self.stack.get_ptr(self.stack.len() - 1)) };
         while let Some(upvalue) = self.open_upvalues {
             if upvalue.value.as_ptr() < value.as_ptr() {
                 break;
@@ -448,7 +448,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         let local = self.next_byte() != 0;
                         let index = self.next_byte();
                         if local {
-                            let stack_value = (&mut self.stack[index as usize]) as *mut _;
+                            let stack_value = unsafe { self.stack.get_ptr(index as usize) };
                             let ptr = unsafe { ValidPtr::from_ptr(stack_value) };
                             upvalues.push(self.capture_upvalue(ptr));
                         } else {
@@ -510,7 +510,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::SetLocal => {
                     let slot = self.next_byte();
-                    self.stack[base_pointer + slot as usize] = self.peek(0);
+                    unsafe {
+                        *self.stack.get_ptr(base_pointer + slot as usize) = self.peek(0);
+                    }
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();

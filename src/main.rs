@@ -892,9 +892,8 @@ mod test_runtime {
     }
 
     snap_interpret! {
-        stack_assign, // miri doesn't like this, even with tree borrows
-                      // open_upvalues and the stack are both implicated here
-                      // we can't take pointers to them _and_ use them as &mut
+        stack_assign, // miri didn't like this before due to aliasing and pointers into the stack
+                      // which was fixed by adding UnsafeCell to the stack
         "
         {
             var x = 0;
