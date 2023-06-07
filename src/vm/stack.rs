@@ -1,4 +1,5 @@
-use std::{cell::UnsafeCell, mem::transmute};
+use core::slice;
+use std::{cell::UnsafeCell};
 
 use crate::value::Value;
 
@@ -79,7 +80,8 @@ impl FixedStack {
     /// SAFETY: The burden of following aliasing rules is on the callee
     ///         With great power comes great responsibility
     pub unsafe fn slice(&self) -> &[Value] {
+        let slice = &self.stack[..self.len()];
         // UnsafeCell is repr(transparent)
-        transmute(&self.stack[..self.len()])
+        slice::from_raw_parts(slice.as_ptr() as *const Value, slice.len())
     }
 }
