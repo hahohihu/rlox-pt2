@@ -2,7 +2,6 @@ use super::function::{ObjClosure, ObjFunction};
 use super::native_function::NativeFunction;
 use crate::common::{alloc, try_as::TryAs};
 
-use super::upvalue::ObjUpvalue;
 use super::{string::UnsafeString, valid::ValidPtr};
 use std::fmt::Display;
 
@@ -91,9 +90,6 @@ pub enum ObjectKind {
     Function { fun: ObjFunction },
     Closure { fun: ObjClosure },
     NativeFunction { fun: NativeFunction },
-    // this is a redundant layer of pointer - the upvalue does need to be pinned since it's self-referential
-    // but Object is already in a pointer, so it's somewhat wasteful to store this in one too.
-    Upvalue { upvalue: ValidPtr<ObjUpvalue> },
 }
 
 impl Display for ObjectKind {
@@ -103,7 +99,6 @@ impl Display for ObjectKind {
             Self::Function { fun } => fun.fmt(f),
             Self::Closure { fun } => fun.function.fmt(f),
             Self::NativeFunction { fun } => fun.fmt(f),
-            Self::Upvalue { upvalue } => upvalue.fmt(f),
         }
     }
 }
@@ -140,12 +135,6 @@ impl From<String> for ObjectKind {
     }
 }
 
-impl From<ValidPtr<ObjUpvalue>> for ObjectKind {
-    fn from(upvalue: ValidPtr<ObjUpvalue>) -> Self {
-        ObjectKind::Upvalue { upvalue }
-    }
-}
-
 impl TryAs<ObjFunction> for ObjectKind {
     fn try_as(self) -> Option<ObjFunction> {
         match self {
@@ -170,7 +159,6 @@ impl ObjectKind {
             Self::String { .. } => "string",
             Self::Closure { .. } | Self::Function { .. } => "function",
             Self::NativeFunction { .. } => "native-function",
-            Self::Upvalue { .. } => "upvalue",
         }
     }
 
@@ -180,10 +168,6 @@ impl ObjectKind {
             Self::Function { fun } => fun.free(),
             Self::Closure { fun } => fun.free(),
             Self::NativeFunction { fun } => fun.free(),
-            Self::Upvalue { upvalue } => {
-                upvalue.free();
-                ValidPtr::free(upvalue);
-            }
         }
     }
 }

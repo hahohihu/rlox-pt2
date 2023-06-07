@@ -16,7 +16,7 @@ use crate::{
         native_function::{CallError, NativeFunction},
         object::{Object, ObjectKind},
         string::UnsafeString,
-        upvalue::ObjUpvalue,
+        upvalue::Upvalue,
         valid::ValidPtr,
         Value,
     },
@@ -42,9 +42,10 @@ struct VM<'src, Stderr, Stdout> {
     /// SAFETY INVARIANT: All objects in objects are valid, and there are no duplicate allocations
     /// This is used to look for inaccessible objects to free
     objects: Vec<Object>,
+    upvalue_storage: Vec<ValidPtr<Upvalue>>,
     /// Chunk is the source of truth for indices
     globals: Vec<Option<Value>>,
-    open_upvalues: Option<ValidPtr<ObjUpvalue>>,
+    open_upvalues: Option<ValidPtr<Upvalue>>,
 }
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
@@ -54,6 +55,13 @@ impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
             unsafe {
                 // SAFETY: See safety invariant on objects
                 object.free();
+            }
+        }
+
+        for upvalue in &self.upvalue_storage {
+            unsafe {
+                // no internals to free
+                ValidPtr::free(*upvalue);
             }
         }
     }
@@ -77,6 +85,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             source,
             stack: FixedStack::new(),
             objects: vec![],
+            upvalue_storage: vec![],
             stderr,
             stdout,
             globals: vec![],
@@ -363,7 +372,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ValidPtr<ObjUpvalue> {
+    fn capture_upvalue(&mut self, value: ValidPtr<Value>) -> ValidPtr<Upvalue> {
         let mut prev = None;
         let mut current = self.open_upvalues;
         while let Some(upvalue) = current {
@@ -380,9 +389,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             }
         }
 
-        let new_upvalue = ValidPtr::new(ObjUpvalue {
+        let new_upvalue = ValidPtr::new(Upvalue {
             value,
             closed: Value::Num(f64::MAX),
+            marked: false,
             next_open: current,
         });
         if let Some(prev) = prev {
@@ -408,7 +418,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 (*upvalue.as_ptr()).closed = *value;
                 (*upvalue.as_ptr()).value = ValidPtr::from_ptr(&mut (*upvalue.as_ptr()).closed);
             }
-            self.objects.push(Object::from(upvalue));
+            self.upvalue_storage.push(upvalue);
             self.open_upvalues = upvalue.next_open;
         }
     }

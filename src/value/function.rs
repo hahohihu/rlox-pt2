@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{string::UnsafeString, upvalue::ObjUpvalue, valid::ValidPtr};
+use super::{string::UnsafeString, upvalue::Upvalue, valid::ValidPtr};
 
 #[derive(Copy, Clone, Debug, Eq)]
 pub struct ObjFunction {
@@ -31,7 +31,7 @@ impl ObjFunction {
 #[derive(Copy, Clone, Debug)]
 pub struct ObjClosure {
     pub function: ObjFunction,
-    pub upvalues: ValidPtr<[ValidPtr<ObjUpvalue>]>,
+    pub upvalues: ValidPtr<[ValidPtr<Upvalue>]>,
 }
 
 impl PartialEq for ObjClosure {
