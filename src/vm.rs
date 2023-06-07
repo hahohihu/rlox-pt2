@@ -287,7 +287,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         println!("==== OPEN UPVALUES ====");
         let mut it = self.open_upvalues;
         while let Some(upvalue) = it {
-            println!("{}", *upvalue.value);
+            println!("{} @ {:?}", *upvalue.value, upvalue.value.as_ptr());
             it = upvalue.next_open;
         }
         println!("==== GLOBALS ====");
@@ -425,6 +425,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         //   b: stacked borrows make &mut awkward to deal with
         let value = unsafe { ValidPtr::from_ptr(self.stack.get_ptr(self.stack.len() - 1)) };
         while let Some(upvalue) = self.open_upvalues {
+            println!(
+                "{} @ {:?} < {} @ {:?}",
+                *upvalue.value,
+                upvalue.value.as_ptr(),
+                *value,
+                value.as_ptr()
+            );
             if upvalue.value.as_ptr() < value.as_ptr() {
                 break;
             }
@@ -564,7 +571,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         let local = self.next_byte() != 0;
                         let index = self.next_byte();
                         if local {
-                            let stack_value = unsafe { self.stack.get_ptr(index as usize) };
+                            let stack_value =
+                                unsafe { self.stack.get_ptr(base_pointer + index as usize) };
                             let ptr = unsafe { ValidPtr::from_ptr(stack_value) };
                             upvalues.push(self.capture_upvalue(ptr));
                         } else {

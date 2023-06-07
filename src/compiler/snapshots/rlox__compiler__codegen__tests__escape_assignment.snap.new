@@ -1,0 +1,43 @@
+---
+source: src/compiler/codegen.rs
+assertion_line: 646
+expression: "crate::common::test_util::mock_codegen(r#\"\n        {\n            var f;\n            var s = \"foo\";\n            fun decorate(s2) {\n                fun inner() {\n                    print s + s2;\n                }\n                f = inner;\n            }\n            decorate(\"bar\");\n            f();\n        }\n        \"#)"
+---
+bytecode:
+==== test.lox ====
+0000 f       CONSTANT            0 'nil'
+0002 "foo"   CONSTANT            1 'foo'
+0004         JUMP_REL         24
+0007 |       JUMP_REL         8
+0010 s       GET_UPVALUE      0
+0012 s2      GET_UPVALUE      1
+0014 +       ADD
+0015         PRINT
+0016 |       NIL
+0017 |       RETURN
+0018 inner   CLOSURE          <function inner @ 10>
+0020                               upvalue 0
+0022                               local 1
+0024 inner   GET_LOCAL        2
+0026 f       SET_UPVALUE      1
+0028         POP
+0029 |       NIL
+0030 |       RETURN
+0031 ecorate CLOSURE          <function decorate @ 7>
+0033                               local 1
+0035                               local 0
+0037 ecorate GET_LOCAL        2
+0039 "bar"   CONSTANT            4 'bar'
+0041 ecorate CALL             1
+0043         POP
+0044 f       GET_LOCAL        0
+0046 |       CALL             0
+0048         POP
+0049 |       POP
+0050 |       CLOSE_UPVALUE
+0051 |       CLOSE_UPVALUE
+0052 |       NIL
+0053 |       RETURN
+
+
+

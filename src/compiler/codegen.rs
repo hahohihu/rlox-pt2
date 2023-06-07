@@ -642,4 +642,22 @@ mod tests {
         }
         "
     }
+
+    snap_codegen! {
+        escape_assignment,
+        r#"
+        {
+            var f;
+            var s = "foo";
+            fun decorate(s2) {
+                fun inner() {
+                    print s + s2;
+                }
+                f = inner;
+            }
+            decorate("bar");
+            f();
+        }
+        "#
+    }
 }
