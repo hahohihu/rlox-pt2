@@ -1,5 +1,5 @@
 use core::slice;
-use std::cell::UnsafeCell;
+use std::cell::{UnsafeCell, Cell};
 
 use crate::value::Value;
 
@@ -10,7 +10,7 @@ pub struct FixedStack {
     // In particular, we cannot take a &mut because we have pointers into the stack that mutate it
     // MaybeUninit is mostly an optimization, since we already have len
     stack: [UnsafeCell<Value>; MAX_SIZE],
-    len: UnsafeCell<usize>,
+    len: Cell<usize>,
 }
 
 impl FixedStack {
@@ -20,28 +20,23 @@ impl FixedStack {
         const UNINIT: UnsafeCell<Value> = UnsafeCell::new(Value::Num(f64::MAX));
         Self {
             stack: [UNINIT; MAX_SIZE],
-            len: UnsafeCell::new(0),
+            len: Cell::new(0),
         }
     }
 
+    #[inline(always)]
     pub fn len(&self) -> usize {
-        unsafe { *self.len.get() }
+        self.len.get()
     }
 
-    #[must_use]
-    pub fn push(&self, value: Value) -> bool {
-        unsafe {
-            let len = self.len();
-            if len >= MAX_SIZE {
-                return false;
-            }
-
-            *self.stack[len].get() = value;
-            *self.len.get() += 1;
-            true
-        }
+    #[inline(always)]
+    pub unsafe fn unchecked_push(&self, value: Value) {
+        let len = self.len();
+        self.len.set(len + 1);
+        *self.stack.get_unchecked(len).get() = value;
     }
 
+    #[inline(always)]
     #[must_use]
     pub fn peek(&self, i: usize) -> Option<Value> {
         unsafe {
@@ -54,6 +49,7 @@ impl FixedStack {
         }
     }
 
+    #[inline(always)]
     pub fn get(&self, i: usize) -> Option<Value> {
         if i >= self.len() {
             None
@@ -62,19 +58,19 @@ impl FixedStack {
         }
     }
 
+    #[inline(always)]
     pub fn pop(&self) -> Option<Value> {
         let res = self.peek(0);
         if let Some(_) = res {
-            unsafe {
-                *self.len.get() -= 1;
-            }
+            self.len.set(self.len() - 1);
         }
         res
     }
 
+    #[inline(always)]
     pub unsafe fn get_ptr(&self, index: usize) -> *mut Value {
         // MaybeUninit is repr(transparent)
-        self.stack[index].get()
+        self.stack.get_unchecked(index).get()
     }
 
     /// SAFETY: The burden of following aliasing rules is on the callee

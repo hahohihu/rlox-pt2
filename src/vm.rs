@@ -128,7 +128,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let b = self.pop();
         let a = self.pop();
         match (a, b) {
-            (Value::Num(a), Value::Num(b)) => self.push(op(a, b))?,
+            (Value::Num(a), Value::Num(b)) => self.push(op(a, b)),
             (a, b) => {
                 let span = self.get_span(-2..1);
                 self.runtime_error(
@@ -200,7 +200,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let val = self.pop();
         match val {
             Value::Num(n) => {
-                self.push(Value::Num(-n))?;
+                self.push(Value::Num(-n));
             }
             val => {
                 let span = self.get_span(-1..0);
@@ -219,7 +219,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let a = self.pop();
         match (a, b) {
             (Value::Num(a), Value::Num(b)) => {
-                self.push(Value::Num(a + b))?;
+                self.push(Value::Num(a + b));
                 return Ok(());
             }
             (Value::Object(a), Value::Object(b)) => {
@@ -228,7 +228,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 if let (Some(a), Some(b)) = (a, b) {
                     let concatenated = Object::from(a + b);
                     self.objects.push(concatenated);
-                    self.push(Value::Object(concatenated))?;
+                    self.push(Value::Object(concatenated));
                     return Ok(());
                 }
             }
@@ -292,37 +292,34 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     fn peek(&self, i: usize) -> Value {
-        self.stack.peek(i).unwrap()
+        unsafe { self.stack.peek(i).unwrap_unchecked() }
     }
 
     fn pop(&mut self) -> Value {
-        self.stack.pop().unwrap()
+        unsafe { self.stack.pop().unwrap_unchecked() }
     }
 
-    fn push(&mut self, value: Value) -> InterpretResult {
-        if self.stack.push(value) {
-            Ok(())
-        } else {
-            self.runtime_error(
-                self.get_span(-1..0),
-                format!("Overflowed the stack trying to push {}", value),
-            );
-            Err(InterpretError::RuntimeError)
+    #[inline(always)]
+    fn push(&mut self, value: Value) {
+        unsafe {
+            // safety: this is, surprisingly, always sound because of
+            // 1. the upper bound on the number of variables
+            // 2. limitations on functions overflowing the stack (note: not actually applicable yet)
+            // 3. the general inability to otherwise put a user-defined number of things on the stack
+            self.stack.unchecked_push(value);
         }
     }
 
     fn function_call(&mut self, closure: ObjClosure, arg_count: u8) -> InterpretResult {
         let function = closure.function;
         if function.arity != arg_count {
-            let span = self.get_span(-2..0);
-            self.runtime_error(
-                span,
+            return Err(self.runtime_error(
+                self.get_span(-2..0),
                 format!(
                     "Function {} expects {} arguments, but got {}",
                     function.name, function.arity, arg_count
                 ),
-            );
-            return Err(InterpretError::RuntimeError);
+            ));
         }
         self.callframe.push(CallFrame {
             // -1 to include function itself
@@ -330,6 +327,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             return_addr: self.ip,
             closure,
         });
+        // an arbitrary number required so we don't UB with stack overflows
+        if self.callframe.len() > 512 {
+            return Err(self.runtime_error(
+                self.get_span(-2..0),
+                format!("Overflowed the stack calling {}", function.name),
+            ));
+        }
         self.ip = function.addr;
         Ok(())
     }
@@ -338,7 +342,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         match function.call(unsafe { &self.stack.slice()[self.stack.len() - arg_count as usize..] })
         {
             Ok(value) => {
-                self.push(value)?;
+                self.push(value);
                 Ok(())
             }
             Err(CallError::ArityMismatch(arity)) => {
@@ -536,7 +540,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                         self.close_top_upvalue();
                         self.pop();
                     }
-                    self.push(res)?;
+                    self.push(res);
                     self.ip = callframe.return_addr;
                 }
                 OpCode::Closure => {
@@ -557,7 +561,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let upvalues = ValidPtr::from(upvalues.into_boxed_slice());
                     let closure = Object::from(ObjClosure { function, upvalues });
                     self.objects.push(closure);
-                    self.push(Value::from(closure))?;
+                    self.push(Value::from(closure));
                 }
                 OpCode::CloseUpvalue => {
                     self.close_top_upvalue();
@@ -599,7 +603,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::GetGlobal => {
                     let index = self.next_byte();
                     let value = self.get_global(index)?;
-                    self.push(value)?;
+                    self.push(value);
                 }
                 OpCode::SetGlobal => {
                     let index = self.next_byte();
@@ -614,13 +618,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.push(self.stack.get(base_pointer + slot as usize).unwrap())?;
+                    self.push(self.stack.get(base_pointer + slot as usize).unwrap());
                 }
                 OpCode::GetUpvalue => {
                     let slot = self.next_byte();
                     let closure = self.callframe.last().unwrap().closure;
                     let value = closure.upvalues[slot as usize];
-                    self.push(*value.value)?;
+                    self.push(*value.value);
                 }
                 OpCode::SetUpvalue => {
                     let slot = self.next_byte();
@@ -632,17 +636,17 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();
-                    self.push(constant)?;
+                    self.push(constant);
                 }
                 OpCode::Nil => {
-                    self.push(Value::Nil)?;
+                    self.push(Value::Nil);
                 }
-                OpCode::True => self.push(Value::Bool(true))?,
-                OpCode::False => self.push(Value::Bool(false))?,
+                OpCode::True => self.push(Value::Bool(true)),
+                OpCode::False => self.push(Value::Bool(false)),
                 OpCode::Negate => self.negate()?,
                 OpCode::Not => {
                     let value = Value::Bool(self.pop().falsey());
-                    self.push(value)?;
+                    self.push(value);
                 }
                 OpCode::Print => {
                     let value = self.pop();
@@ -657,7 +661,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 OpCode::Equal => {
                     let b = self.pop();
                     let a = self.pop();
-                    self.push(Value::Bool(a == b))?;
+                    self.push(Value::Bool(a == b));
                 }
                 OpCode::Invalid => {
                     unreachable!("Reached invalid opcode at {}", self.ip_offset())
