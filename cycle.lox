@@ -1,0 +1,33 @@
+
+fun exp(s) {
+    return s + s;
+}
+
+fun exp2(s) {
+    return exp(exp(s));
+}
+
+fun exp3(s) {
+    return exp2(exp2(s));
+}
+
+fun exp4(s) {
+    return exp3(exp3(s));
+}
+
+var f;
+var f2;
+for var i = 0; i < 1000000000; i = i + 1 {
+    var s = exp4(exp4("foobar"));
+    fun outer() {
+        s;
+        fun inner() {
+            s;
+            return outer;
+        }
+        return inner;
+    }
+    f = outer();
+    f2 = f();
+}
+
