@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::{valid::ValidPtr, value::Value};
+use crate::value::{valid::ValidPtr, Value};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Upvalue {

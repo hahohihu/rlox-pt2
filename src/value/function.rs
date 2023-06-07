@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-use super::{string::UnsafeString, upvalue::Upvalue, valid::ValidPtr};
+use crate::vm::upvalue::Upvalue;
+
+use super::{string::UnsafeString, valid::ValidPtr};
 
 #[derive(Copy, Clone, Debug, Eq)]
 pub struct ObjFunction {

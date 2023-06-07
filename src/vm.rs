@@ -1,4 +1,5 @@
 mod stack;
+pub mod upvalue;
 use std::{io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
@@ -16,13 +17,12 @@ use crate::{
         native_function::{CallError, NativeFunction},
         object::{Object, ObjectKind},
         string::UnsafeString,
-        upvalue::Upvalue,
         valid::ValidPtr,
         Value,
     },
 };
 
-use self::stack::FixedStack;
+use self::{stack::FixedStack, upvalue::Upvalue};
 
 #[derive(Copy, Clone, Debug)]
 struct CallFrame {
