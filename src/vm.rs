@@ -124,7 +124,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.chunk.get_constant(i)
     }
 
-    unsafe fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
+    unsafe fn binary_num_op(
+        &mut self,
+        name: &str,
+        op: impl Fn(f64, f64) -> Value,
+    ) -> InterpretResult {
         let b = self.pop();
         let a = self.pop();
         match (a, b) {
