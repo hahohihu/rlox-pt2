@@ -1,6 +1,5 @@
 ---
 source: src/main.rs
-assertion_line: 1026
 expression: "crate::common::test_util::mock_interpret(r#\"\n        {\n            var f;\n            var s = \"foo\";\n            fun decorate(s2) {\n                fun inner() {\n                    print s + s2;\n                }\n                f = inner;\n            }\n            decorate(\"bar\");\n            f();\n        }\n        \"#)"
 ---
 stdout:
