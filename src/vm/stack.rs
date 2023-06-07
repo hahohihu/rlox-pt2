@@ -24,47 +24,27 @@ impl FixedStack {
         }
     }
 
-    #[inline(always)]
     pub fn len(&self) -> usize {
         self.len.get()
     }
 
     #[inline(always)]
-    pub unsafe fn unchecked_push(&self, value: Value) {
-        let len = self.len();
+    pub unsafe fn push(&self, value: Value) {
+        let len = self.len.get();
         self.len.set(len + 1);
         *self.stack.get_unchecked(len).get() = value;
     }
 
     #[inline(always)]
-    #[must_use]
-    pub fn peek(&self, i: usize) -> Option<Value> {
-        unsafe {
-            let len = self.len();
-            let i = len - i - 1;
-            if i >= len {
-                return None;
-            }
-            Some(*self.get_ptr(i))
-        }
+    pub unsafe fn peek(&self, i: usize) -> Value {
+        *self.get_ptr(self.len.get() - i - 1)
     }
 
     #[inline(always)]
-    pub fn get(&self, i: usize) -> Option<Value> {
-        if i >= self.len() {
-            None
-        } else {
-            unsafe { Some(*self.get_ptr(i)) }
-        }
-    }
-
-    #[inline(always)]
-    pub fn pop(&self) -> Option<Value> {
-        let res = self.peek(0);
-        if let Some(_) = res {
-            self.len.set(self.len() - 1);
-        }
-        res
+    pub unsafe fn pop(&self) -> Value {
+        let len = self.len.get();
+        self.len.set(len - 1);
+        *self.get_ptr(len - 1)
     }
 
     #[inline(always)]
@@ -76,7 +56,7 @@ impl FixedStack {
     /// SAFETY: The burden of following aliasing rules is on the callee
     ///         With great power comes great responsibility
     pub unsafe fn slice(&self) -> &[Value] {
-        let slice = &self.stack[..self.len()];
+        let slice = &self.stack[..self.len.get()];
         // UnsafeCell is repr(transparent)
         slice::from_raw_parts(slice.as_ptr() as *const Value, slice.len())
     }

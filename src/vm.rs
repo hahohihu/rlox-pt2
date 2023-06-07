@@ -124,7 +124,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.chunk.get_constant(i)
     }
 
-    fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
+    unsafe fn binary_num_op(&mut self, name: &str, op: impl Fn(f64, f64) -> Value) -> InterpretResult {
         let b = self.pop();
         let a = self.pop();
         match (a, b) {
@@ -196,7 +196,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn negate(&mut self) -> InterpretResult {
+    unsafe fn negate(&mut self) -> InterpretResult {
         let val = self.pop();
         match val {
             Value::Num(n) => {
@@ -214,7 +214,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Ok(())
     }
 
-    fn add(&mut self) -> InterpretResult {
+    unsafe fn add(&mut self) -> InterpretResult {
         let b = self.pop();
         let a = self.pop();
         match (a, b) {
@@ -295,12 +295,12 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         println!("=================");
     }
 
-    fn peek(&self, i: usize) -> Value {
-        unsafe { self.stack.peek(i).unwrap_unchecked() }
+    unsafe fn peek(&self, i: usize) -> Value {
+        self.stack.peek(i)
     }
 
-    fn pop(&mut self) -> Value {
-        unsafe { self.stack.pop().unwrap_unchecked() }
+    unsafe fn pop(&mut self) -> Value {
+        self.stack.pop()
     }
 
     #[inline(always)]
@@ -310,7 +310,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             // 1. the upper bound on the number of variables
             // 2. limitations on functions overflowing the stack (note: not actually applicable yet)
             // 3. the general inability to otherwise put a user-defined number of things on the stack
-            self.stack.unchecked_push(value);
+            self.stack.push(value);
         }
     }
 
@@ -366,7 +366,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn call(&mut self, arg_count: u8) -> InterpretResult {
+    unsafe fn call(&mut self, arg_count: u8) -> InterpretResult {
         let value = self.peek(arg_count.into());
         match value.try_as() {
             Some(ObjectKind::Closure { fun }) => self.function_call(fun, arg_count),
