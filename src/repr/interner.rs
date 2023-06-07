@@ -1,4 +1,4 @@
-use super::string::UnsafeString;
+use crate::value::string::UnsafeString;
 use std::collections::HashMap;
 
 pub type InternedU8 = u8;

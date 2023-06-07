@@ -1,4 +1,4 @@
-use super::{alloc, try_as::TryAs};
+use crate::common::{alloc, try_as::TryAs};
 use std::fmt::Display;
 
 use super::object::Object;

@@ -1,5 +1,5 @@
-use super::alloc;
 use super::valid::ValidPtr;
+use crate::common::alloc;
 use std::{
     borrow::Borrow,
     fmt::Display,

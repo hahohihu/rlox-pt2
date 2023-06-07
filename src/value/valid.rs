@@ -1,4 +1,4 @@
-use super::alloc;
+use crate::common::alloc;
 use std::{fmt::Debug, ops::Deref, ptr::NonNull};
 
 #[repr(transparent)]

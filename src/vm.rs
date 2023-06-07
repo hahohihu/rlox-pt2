@@ -5,21 +5,21 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
 
 use crate::{
-    common::ui::{self, Span},
-    compiler::compile,
-    repr::{
-        chunk::{Chunk, OpCode},
-        function::{ObjClosure, ObjFunction},
-        string::UnsafeString,
+    common::{
         try_as::{TryAs, TryCast},
+        ui::{self, Span},
+    },
+    compiler::compile,
+    repr::chunk::{Chunk, OpCode},
+    value::{
+        function::{ObjClosure, ObjFunction},
+        native_function::{CallError, NativeFunction},
+        object::{Object, ObjectKind},
+        string::UnsafeString,
         upvalue::ObjUpvalue,
         valid::ValidPtr,
+        Value,
     },
-    repr::{
-        native_function::CallError,
-        object::{Object, ObjectKind},
-    },
-    repr::{native_function::NativeFunction, value::Value},
 };
 
 use self::stack::FixedStack;
@@ -28,7 +28,6 @@ use self::stack::FixedStack;
 struct CallFrame {
     base_pointer: usize,
     return_addr: usize,
-    // todo: rework top-level execution so that it's within a closure, or make it so that top-level execution has no callframe
     closure: ObjClosure,
 }
 

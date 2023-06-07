@@ -6,19 +6,19 @@ use std::slice::SliceIndex;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use crate::repr::function::ObjFunction;
 use crate::repr::interner::InternedU8;
 use crate::repr::interner::Interner;
 
 use crate::repr::chunk::Chunk;
 use crate::repr::chunk::OpCode;
-use crate::repr::native_function::CallError;
-use crate::repr::native_function::NativeFunction;
-use crate::repr::string::UnsafeString;
-use crate::repr::value::Value;
 
 use crate::common::ui;
 use crate::common::ui::*;
+use crate::value::function::ObjFunction;
+use crate::value::native_function::CallError;
+use crate::value::native_function::NativeFunction;
+use crate::value::string::UnsafeString;
+use crate::value::Value;
 
 use self::scope::Scope;
 

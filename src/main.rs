@@ -12,6 +12,7 @@ use vm::interpret;
 mod common;
 mod compiler;
 mod repr;
+mod value;
 mod vm;
 
 fn read_file(filename: &str) -> std::io::Result<String> {

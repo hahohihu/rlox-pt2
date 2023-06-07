@@ -1,6 +1,6 @@
 use std::{cell::UnsafeCell, mem::transmute};
 
-use crate::repr::value::Value;
+use crate::value::Value;
 
 const MAX_SIZE: usize = 4096;
 #[derive(Debug)]
