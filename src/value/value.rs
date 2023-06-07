@@ -35,6 +35,12 @@ impl Value {
     pub fn falsey(&self) -> bool {
         matches!(self, Self::Bool(false) | Self::Nil)
     }
+
+    pub fn mark(&self) {
+        if let Self::Object(obj) = self {
+            obj.mark();
+        }
+    }
 }
 
 impl From<bool> for Value {

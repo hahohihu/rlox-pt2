@@ -18,6 +18,8 @@ default = ["snap"]
 verbose_vm = []
 verbose_parsing = []
 verbose_allocations = []
+stress_gc = []
+verbose_gc = []
 instrument = []
 snap = []
 

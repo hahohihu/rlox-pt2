@@ -46,4 +46,10 @@ impl ObjClosure {
     pub unsafe fn free(&self) {
         ValidPtr::free(self.upvalues);
     }
+
+    pub fn mark(&self) {
+        for _upvalue in &*self.upvalues {
+            todo!("upvalues aren't proper objects per se, so they don't really fit neatly into this GC structure");
+        }
+    }
 }

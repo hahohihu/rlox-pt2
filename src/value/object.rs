@@ -9,7 +9,7 @@ use std::fmt::Display;
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 pub struct Object {
-    inner: ValidPtr<ObjectInner>,
+    pub inner: ValidPtr<ObjectInner>,
 }
 
 impl PartialEq for Object {
@@ -26,7 +26,10 @@ impl Display for Object {
 
 impl<T: Into<ObjectKind>> From<T> for Object {
     fn from(value: T) -> Self {
-        Self::from_inner(ObjectInner { kind: value.into() })
+        Self::from_inner(ObjectInner {
+            kind: value.into(),
+            marked: false,
+        })
     }
 }
 
@@ -52,6 +55,16 @@ impl Object {
     pub fn kind(self) -> ObjectKind {
         self.inner.kind
     }
+
+    pub fn mark(self) {
+        #[cfg(verbose_gc)]
+        {
+            eprintln!("Mark {:?} == {}", inner, inner.kind).unwrap();
+        }
+        unsafe {
+            (*self.inner.as_ptr()).marked = true;
+        }
+    }
 }
 
 impl<T> TryAs<T> for Object
@@ -66,8 +79,9 @@ where
 // ==================================================== Internals below here
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct ObjectInner {
-    kind: ObjectKind,
+pub struct ObjectInner {
+    pub kind: ObjectKind,
+    pub marked: bool,
 }
 
 #[non_exhaustive]

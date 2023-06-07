@@ -413,6 +413,50 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
+    fn mark_stack(&mut self) {
+        let stack = unsafe {
+            // SAFETY: values on the stack won't be directly modified, except potentially through their interior pointers
+            self.stack.slice()
+        };
+        for value in stack {
+            value.mark();
+        }
+    }
+
+    fn mark_globals(&mut self) {
+        for global in self.globals.iter().flatten() {
+            global.mark();
+        }
+    }
+
+    fn mark_everything(&mut self) {
+        self.mark_stack();
+        self.mark_globals();
+
+        for frame in self.callframe.iter() {
+            frame.closure.mark();
+        }
+
+        let mut it = self.open_upvalues;
+        while let Some(upvalue) = it {
+            // same issue as closures
+            it = upvalue.next;
+            todo!("upvalue.mark()");
+        }
+    }
+
+    fn collect_garbage(&mut self) {
+        #[cfg(verbose_gc)]
+        {
+            eprintln!(">> GC begin").unwrap();
+        }
+        self.mark_everything();
+        #[cfg(verbose_gc)]
+        {
+            eprintln!("<< GC end").unwrap();
+        }
+    }
+
     fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
@@ -425,7 +469,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
 
         loop {
             #[cfg(feature = "verbose_vm")]
-            self.show_debug_trace();
+            {
+                self.show_debug_trace();
+            }
+            // #[cfg(feature = "stress_gc")]
+            // {
+            //     self.collect_garbage();
+            // }
             let base_pointer = self.base_pointer();
             let instruction: OpCode = self.next_byte().into();
             match instruction {
