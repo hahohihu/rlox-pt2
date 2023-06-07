@@ -1,0 +1,38 @@
+fun init() {
+  print "init";
+}
+
+var f = init;
+var i = 0;
+
+fun exp(s) {
+    return s + s;
+}
+
+fun exp2(s) {
+    return exp(exp(s));
+}
+
+fun exp3(s) {
+    return exp2(exp2(s));
+}
+
+fun exp4(s) {
+    return exp3(exp3(s));
+}
+
+while i < 10000000 {
+  f();
+  var s = exp4(exp4("foobar"));
+  fun decorate(s2) {
+    fun inner() {
+      var tmp = s + s2;
+      print i;
+      i = i + 1;
+    }
+    return inner;
+  }
+  f = decorate(s);
+}
+
+

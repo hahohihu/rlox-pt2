@@ -56,13 +56,17 @@ impl Object {
     }
 
     pub fn mark(self) {
-        #[cfg(verbose_gc)]
+        #[cfg(feature = "verbose_gc")]
         {
-            eprintln!("Mark {:?} == {}", inner, inner.kind).unwrap();
+            eprintln!("Mark {:?} == {}", self.inner, self.inner.kind);
+        }
+        if self.inner.marked {
+            return;
         }
         unsafe {
             (*self.inner.as_ptr()).marked = true;
         }
+        self.inner.kind.mark();
     }
 }
 
@@ -168,6 +172,15 @@ impl ObjectKind {
             Self::Function { fun } => fun.free(),
             Self::Closure { fun } => fun.free(),
             Self::NativeFunction { fun } => fun.free(),
+        }
+    }
+
+    pub fn mark(self) {
+        // this is going to be extended when objects are added anyways
+        #[allow(clippy::single_match)]
+        match self {
+            ObjectKind::Closure { fun } => fun.mark(),
+            _ => {} // functions and native functions are both static, strings have nothing to collect
         }
     }
 }

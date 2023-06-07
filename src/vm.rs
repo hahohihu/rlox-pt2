@@ -46,6 +46,7 @@ struct VM<'src, Stderr, Stdout> {
     /// Chunk is the source of truth for indices
     globals: Vec<Option<Value>>,
     open_upvalues: Option<ValidPtr<Upvalue>>,
+    next_gc: usize,
 }
 
 impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
@@ -90,6 +91,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             stdout,
             globals: vec![],
             open_upvalues: None,
+            next_gc: 1024,
         }
     }
 
@@ -450,20 +452,59 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let mut it = self.open_upvalues;
         while let Some(upvalue) = it {
             // same issue as closures
+            unsafe {
+                (*upvalue.as_ptr()).marked = true;
+            }
             it = upvalue.next_open;
-            todo!("upvalue.mark()");
         }
     }
 
+    fn sweep(&mut self) {
+        self.objects.retain(|obj| {
+            if obj.inner.marked {
+                true
+            } else {
+                unsafe {
+                    obj.free();
+                }
+                false
+            }
+        });
+        self.upvalue_storage.retain(|upval| {
+            if upval.marked {
+                true
+            } else {
+                unsafe {
+                    // upvalues don't actually store anything that needs to be freed
+                    ValidPtr::free(*upval);
+                }
+                false
+            }
+        })
+    }
+
+    fn allocations(&self) -> usize {
+        self.objects.len() + self.upvalue_storage.len()
+    }
+
     fn collect_garbage(&mut self) {
-        #[cfg(verbose_gc)]
+        #[cfg(feature = "verbose_gc")]
         {
-            eprintln!(">> GC begin").unwrap();
+            eprintln!(">> GC begin");
+        }
+        let init = self.allocations();
+        #[cfg(not(feature = "stress_gc"))]
+        if init < self.next_gc {
+            return;
         }
         self.mark_everything();
-        #[cfg(verbose_gc)]
+        self.sweep();
+        let new = self.allocations();
+        let gc_heap_grow_factor = 2;
+        self.next_gc = new * gc_heap_grow_factor;
+        #[cfg(feature = "verbose_gc")]
         {
-            eprintln!("<< GC end").unwrap();
+            eprintln!("<< GC end {} -> {}", init, new);
         }
     }
 
@@ -482,10 +523,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             {
                 self.show_debug_trace();
             }
-            // #[cfg(feature = "stress_gc")]
-            // {
-            //     self.collect_garbage();
-            // }
+            self.collect_garbage();
             let base_pointer = self.base_pointer();
             let instruction: OpCode = self.next_byte().into();
             match instruction {

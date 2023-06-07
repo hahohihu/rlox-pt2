@@ -10,6 +10,12 @@ pub struct Upvalue {
     pub next_open: Option<ValidPtr<Upvalue>>,
 }
 
+impl Upvalue {
+    pub fn mark(&self) {
+        self.closed.mark();
+    }
+}
+
 impl PartialEq for Upvalue {
     fn eq(&self, other: &Self) -> bool {
         self.value.as_ptr() == other.value.as_ptr()

@@ -54,6 +54,7 @@ impl ObjClosure {
             unsafe {
                 (*upvalue.as_ptr()).marked = true;
             }
+            upvalue.mark();
         }
     }
 }

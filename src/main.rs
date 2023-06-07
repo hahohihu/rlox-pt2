@@ -1021,4 +1021,23 @@ mod test_runtime {
         print foo != 1;
         "
     }
+
+    // todo: discovered during GC testing but currently failing
+    // snap_interpret! {
+    //     escape_assignment,
+    //     r#"
+    //     {
+    //         var f;
+    //         var s = "foo";
+    //         fun decorate(s2) {
+    //             fun inner() {
+    //                 print s + s2;
+    //             }
+    //             f = inner;
+    //         }
+    //         decorate("bar");
+    //         f();
+    //     }
+    //     "#
+    // }
 }
