@@ -474,6 +474,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn sweep(&mut self) {
         self.objects.retain(|obj| {
             if obj.inner.marked {
+                unsafe {
+                    (*obj.inner.as_ptr()).marked = false;
+                }
                 true
             } else {
                 unsafe {
@@ -484,6 +487,9 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         });
         self.upvalue_storage.retain(|upval| {
             if upval.marked {
+                unsafe {
+                    (*upval.as_ptr()).marked = false;
+                }
                 true
             } else {
                 unsafe {
