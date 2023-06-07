@@ -1,5 +1,5 @@
 use core::slice;
-use std::cell::{UnsafeCell, Cell};
+use std::cell::{Cell, UnsafeCell};
 
 use crate::value::Value;
 

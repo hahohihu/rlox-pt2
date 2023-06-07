@@ -1,6 +1,6 @@
 mod stack;
 pub mod upvalue;
-use std::{io::Write, mem::size_of, ops::Range};
+use std::{hint::unreachable_unchecked, io::Write, mem::size_of, ops::Range};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -95,8 +95,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn next_byte(&mut self) -> u8 {
-        let byte = self.chunk.instructions[self.ip];
+    unsafe fn next_byte(&mut self) -> u8 {
+        let byte = *self.chunk.instructions.get_unchecked(self.ip);
         self.jump(1);
         byte
     }
@@ -119,7 +119,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         Span::unite_many(&self.chunk.spans[range])
     }
 
-    fn read_constant(&mut self) -> Value {
+    unsafe fn read_constant(&mut self) -> Value {
         let i = self.next_byte();
         self.chunk.get_constant(i)
     }
@@ -250,9 +250,13 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         self.ip = (self.ip as isize + offset) as usize;
     }
 
-    fn read<T: AnyBitPattern>(&mut self) -> T {
+    unsafe fn read<T: AnyBitPattern>(&mut self) -> T {
         let size = size_of::<T>();
-        let bytes = &self.chunk.instructions[self.ip..][..size];
+        let bytes = &self
+            .chunk
+            .instructions
+            .get_unchecked(self.ip..)
+            .get_unchecked(..size);
         self.ip += size;
         pod_read_unaligned(bytes)
     }
@@ -512,7 +516,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         }
     }
 
-    fn run(&mut self) -> InterpretResult {
+    unsafe fn run(&mut self) -> InterpretResult {
         if self.chunk.instructions.is_empty() {
             return Ok(());
         }
@@ -612,27 +616,23 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::SetLocal => {
                     let slot = self.next_byte();
-                    unsafe {
-                        *self.stack.get_ptr(base_pointer + slot as usize) = self.peek(0);
-                    }
+                    *self.stack.get_ptr(base_pointer + slot as usize) = self.peek(0);
                 }
                 OpCode::GetLocal => {
                     let slot = self.next_byte();
-                    self.push(self.stack.get(base_pointer + slot as usize).unwrap());
+                    self.push(*self.stack.get_ptr(base_pointer + slot as usize));
                 }
                 OpCode::GetUpvalue => {
                     let slot = self.next_byte();
-                    let closure = self.callframe.last().unwrap().closure;
-                    let value = closure.upvalues[slot as usize];
+                    let closure = self.callframe.last().unwrap_unchecked().closure;
+                    let value = closure.upvalues.get_unchecked(slot as usize);
                     self.push(*value.value);
                 }
                 OpCode::SetUpvalue => {
                     let slot = self.next_byte();
-                    let closure = self.callframe.last().unwrap().closure;
-                    unsafe {
-                        let upval = (*closure.upvalues.as_ptr())[slot as usize];
-                        (*upval.value.as_ptr()) = self.peek(0);
-                    }
+                    let closure = self.callframe.last().unwrap_unchecked().closure;
+                    let upval = (*closure.upvalues.as_ptr()).get_unchecked(slot as usize);
+                    (*upval.value.as_ptr()) = self.peek(0);
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant();
@@ -650,7 +650,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 }
                 OpCode::Print => {
                     let value = self.pop();
-                    writeln!(self.stdout, "{value}").unwrap();
+                    let _ = writeln!(self.stdout, "{value}");
                 }
                 OpCode::Add => self.add()?,
                 OpCode::Sub => self.binary_num_op("-", |a, b| Value::Num(a - b))?,
@@ -664,7 +664,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     self.push(Value::Bool(a == b));
                 }
                 OpCode::Invalid => {
-                    unreachable!("Reached invalid opcode at {}", self.ip_offset())
+                    unreachable_unchecked();
                 }
             }
         }
@@ -676,5 +676,11 @@ pub fn interpret(source: &str, mut stderr: impl Write, mut stdout: impl Write) -
         return Err(InterpretError::CompileError);
     };
     let mut vm = VM::new(chunk, source, &mut stderr, &mut stdout);
-    vm.run()
+    unsafe {
+        // this depends on:
+        // 1. there not being any bugs, which is obviously not going to happen... right?
+        // 2. the codegen being correct
+        // 3. all the other code being correct ;)
+        vm.run()
+    }
 }
