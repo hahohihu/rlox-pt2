@@ -50,8 +50,10 @@ impl ObjClosure {
     }
 
     pub fn mark(&self) {
-        for _upvalue in &*self.upvalues {
-            todo!("upvalues aren't proper objects per se, so they don't really fit neatly into this GC structure");
+        for upvalue in &*self.upvalues {
+            unsafe {
+                (*upvalue.as_ptr()).marked = true;
+            }
         }
     }
 }
