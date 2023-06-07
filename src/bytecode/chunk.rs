@@ -145,7 +145,7 @@ impl Chunk {
 
     fn closure(&self, offset: &mut usize, mut stdout: impl Write) {
         let value = self.instructions[*offset + 1];
-        let fun: ObjFunction = self.constants[value as usize].unwrap_as();
+        let fun: ObjFunction = self.constants[value as usize].try_as().unwrap();
         writeln!(stdout, "{:<16} {}", "CLOSURE", fun).unwrap();
         *offset += 2;
         for _ in 0..fun.upvalues {

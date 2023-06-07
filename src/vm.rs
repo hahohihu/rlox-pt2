@@ -582,7 +582,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                             let ptr = unsafe { ValidPtr::from_ptr(stack_value) };
                             upvalues.push(self.capture_upvalue(ptr));
                         } else {
-                            let outer = self.callframe.last().unwrap().closure;
+                            let outer = self.callframe.last().unwrap_unchecked().closure;
                             upvalues.push((&*outer.upvalues)[index as usize]);
                         }
                     }
