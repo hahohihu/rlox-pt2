@@ -1,6 +1,11 @@
 mod stack;
 pub mod upvalue;
-use std::{hint::unreachable_unchecked, io::Write, mem::size_of, ops::Range};
+use std::{
+    hint::unreachable_unchecked,
+    io::Write,
+    mem::{size_of, transmute},
+    ops::Range,
+};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
@@ -550,7 +555,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             }
             self.collect_garbage();
             let base_pointer = self.base_pointer();
-            let instruction: OpCode = self.next_byte().into();
+            // this is ~10% faster than using .into() on some benchmarks, and should always be correct modulo bugs
+            let instruction: OpCode = transmute(self.next_byte());
             match instruction {
                 OpCode::Return => {
                     let Some(callframe) = self.callframe.pop() else {
@@ -681,7 +687,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let a = self.pop();
                     self.push(Value::Bool(a == b));
                 }
-                OpCode::Invalid => {
+                _ => {
+                    // Invalid is only reachable at a specific value (30), but any other values would be UB anyways because of the transmute
                     unreachable_unchecked();
                 }
             }
