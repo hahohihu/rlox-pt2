@@ -1,8 +1,11 @@
 mod scope;
 
+use std::cell::OnceCell;
 use std::io::Write;
 
 use std::slice::SliceIndex;
+use std::sync::OnceLock;
+use std::time::Instant;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -533,9 +536,12 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             if !values.is_empty() {
                 return Err(CallError::ArityMismatch(0));
             }
-            let time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_or(f64::NAN, |n| n.as_secs_f64());
+            // this is primarily for benchmarking anyways
+            static FIRST_TIME: OnceLock<Instant> = OnceLock::new();
+            let init = *FIRST_TIME.get_or_init(|| {
+                Instant::now()
+            });
+            let time = Instant::now().duration_since(init).as_secs_f64();
             Ok(Value::Num(time))
         });
         for statement in top.0.iter() {
