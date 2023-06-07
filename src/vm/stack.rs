@@ -6,9 +6,7 @@ use crate::value::Value;
 const MAX_SIZE: usize = 4096;
 #[derive(Debug)]
 pub struct FixedStack {
-    // This abomination is necessary because of aliasing rules
-    // In particular, we cannot take a &mut because we have pointers into the stack that mutate it
-    // MaybeUninit is mostly an optimization, since we already have len
+    // Interior mutability is needed because because we have pointers into the stack that mutate it
     stack: [UnsafeCell<Value>; MAX_SIZE],
     len: Cell<usize>,
 }
