@@ -269,7 +269,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let mut it = self.open_upvalues;
         while let Some(upvalue) = it {
             println!("{}", *upvalue.value);
-            it = upvalue.next;
+            it = upvalue.next_open;
         }
         println!("==== GLOBALS ====");
         for (i, v) in self.globals.iter().enumerate() {
@@ -371,7 +371,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 break;
             }
             prev = current;
-            current = upvalue.next;
+            current = upvalue.next_open;
         }
 
         if let Some(upvalue) = current {
@@ -383,11 +383,11 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let new_upvalue = ValidPtr::new(ObjUpvalue {
             value,
             closed: Value::Num(f64::MAX),
-            next: current,
+            next_open: current,
         });
         if let Some(prev) = prev {
             unsafe {
-                (*prev.as_ptr()).next = Some(new_upvalue);
+                (*prev.as_ptr()).next_open = Some(new_upvalue);
             }
         } else {
             self.open_upvalues = Some(new_upvalue);
@@ -409,7 +409,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                 (*upvalue.as_ptr()).value = ValidPtr::from_ptr(&mut (*upvalue.as_ptr()).closed);
             }
             self.objects.push(Object::from(upvalue));
-            self.open_upvalues = upvalue.next;
+            self.open_upvalues = upvalue.next_open;
         }
     }
 
@@ -440,7 +440,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         let mut it = self.open_upvalues;
         while let Some(upvalue) = it {
             // same issue as closures
-            it = upvalue.next;
+            it = upvalue.next_open;
             todo!("upvalue.mark()");
         }
     }

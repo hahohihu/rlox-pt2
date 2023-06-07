@@ -6,7 +6,7 @@ use super::{valid::ValidPtr, value::Value};
 pub struct ObjUpvalue {
     pub value: ValidPtr<Value>,
     pub closed: Value,
-    pub next: Option<ValidPtr<ObjUpvalue>>,
+    pub next_open: Option<ValidPtr<ObjUpvalue>>,
 }
 
 impl ObjUpvalue {
