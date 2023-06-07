@@ -1,13 +1,10 @@
 mod scope;
 
-use std::cell::OnceCell;
 use std::io::Write;
 
 use std::slice::SliceIndex;
 use std::sync::OnceLock;
 use std::time::Instant;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 
 use crate::bytecode::interner::InternedU8;
 use crate::bytecode::interner::Interner;
@@ -538,9 +535,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             }
             // this is primarily for benchmarking anyways
             static FIRST_TIME: OnceLock<Instant> = OnceLock::new();
-            let init = *FIRST_TIME.get_or_init(|| {
-                Instant::now()
-            });
+            let init = *FIRST_TIME.get_or_init(|| Instant::now());
             let time = Instant::now().duration_since(init).as_secs_f64();
             Ok(Value::Num(time))
         });
