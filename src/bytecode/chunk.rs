@@ -4,7 +4,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 
 use crate::common::ui::Span;
 use crate::value::Value;
-use crate::{common::try_as::TryAs, repr::interner::Interner, value::function::ObjFunction};
+use crate::{bytecode::interner::Interner, common::try_as::TryAs, value::function::ObjFunction};
 
 #[derive(Debug, Eq, PartialEq, FromPrimitive, IntoPrimitive)]
 #[repr(u8)]

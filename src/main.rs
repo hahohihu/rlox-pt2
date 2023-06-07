@@ -9,9 +9,9 @@ use std::{
 
 use vm::interpret;
 
+mod bytecode;
 mod common;
 mod compiler;
-mod repr;
 mod value;
 mod vm;
 

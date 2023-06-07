@@ -6,11 +6,11 @@ use std::slice::SliceIndex;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use crate::repr::interner::InternedU8;
-use crate::repr::interner::Interner;
+use crate::bytecode::interner::InternedU8;
+use crate::bytecode::interner::Interner;
 
-use crate::repr::chunk::Chunk;
-use crate::repr::chunk::OpCode;
+use crate::bytecode::chunk::Chunk;
+use crate::bytecode::chunk::OpCode;
 
 use crate::common::ui;
 use crate::common::ui::*;

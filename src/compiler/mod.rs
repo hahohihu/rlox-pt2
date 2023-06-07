@@ -1,4 +1,4 @@
-use crate::repr::chunk::Chunk;
+use crate::bytecode::chunk::Chunk;
 use std::io::Write;
 
 mod codegen;

@@ -5,12 +5,12 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use bytemuck::{pod_read_unaligned, AnyBitPattern};
 
 use crate::{
+    bytecode::chunk::{Chunk, OpCode},
     common::{
         try_as::{TryAs, TryCast},
         ui::{self, Span},
     },
     compiler::compile,
-    repr::chunk::{Chunk, OpCode},
     value::{
         function::{ObjClosure, ObjFunction},
         native_function::{CallError, NativeFunction},
