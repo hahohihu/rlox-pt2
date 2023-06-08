@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 use arbitrary::Arbitrary;
 
 use crate::common::ui::{Span, Spanned};
@@ -73,6 +75,22 @@ pub enum Expression {
 #[derive(Debug, PartialEq, Clone)]
 #[derive(Arbitrary)]
 pub struct Statements(pub Vec<Spanned<Statement>>);
+
+#[derive(Arbitrary, Clone)]
+pub struct FuzzStatements(Statements);
+
+impl Display for FuzzStatements {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Debug for FuzzStatements {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // just for fuzzing, to get a cleaner display
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 #[derive(Arbitrary)]
