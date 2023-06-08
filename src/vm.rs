@@ -101,9 +101,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     }
 
     unsafe fn next_byte(&mut self) -> u8 {
-        let byte = *self.chunk.instructions.get_unchecked(self.ip);
-        self.jump(1);
-        byte
+        self.ip += 1;
+        *self.chunk.instructions.get_unchecked(self.ip - 1)
     }
 
     /// This gets the span over the range relative to the current IP
