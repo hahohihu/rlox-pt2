@@ -121,7 +121,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
 
     fn eof(&self) -> Spanned<Token> {
         let len = self.source.len();
-        let span = ui::Span::from(len - 1..len);
+        let span = ui::Span::from(len.saturating_sub(1)..len);
         Spanned {
             data: Token::Eof,
             span,

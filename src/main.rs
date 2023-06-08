@@ -13,7 +13,7 @@ mod bytecode;
 mod common;
 mod compiler;
 mod value;
-mod vm;
+pub mod vm;
 
 fn read_file(filename: &str) -> std::io::Result<String> {
     let mut file = File::open(filename)?;
@@ -1039,4 +1039,6 @@ mod test_runtime {
         }
         "#
     }
+
+    snap_interpret!(empty, "");
 }

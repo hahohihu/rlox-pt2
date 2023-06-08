@@ -38,3 +38,8 @@ opt-level = 3
 
 [profile.release]
 debug = true
+
+# this is basically just to enable fuzzing
+[lib]
+name = "rlox"
+path = "src/main.rs"
