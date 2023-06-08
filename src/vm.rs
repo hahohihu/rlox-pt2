@@ -547,7 +547,17 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             self.define_global(id, value);
         }
 
+        #[cfg(fuzzing)]
+        let mut iterations = 0;
+
         loop {
+            #[cfg(fuzzing)]
+            {
+                iterations += 1;
+                if iterations == 10_000_000 {
+                    return Ok(());
+                }
+            }
             #[cfg(feature = "verbose_vm")]
             {
                 self.show_debug_trace();

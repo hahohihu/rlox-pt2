@@ -1,9 +1,12 @@
+use arbitrary::Arbitrary;
+
 use crate::common::ui::{Span, Spanned};
 
 pub type Identifier = String;
 pub type Node<T> = Box<Spanned<T>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Arbitrary)]
 pub enum BinaryKind {
     Equals,
     NotEquals,
@@ -20,12 +23,14 @@ pub enum BinaryKind {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Arbitrary)]
 pub enum UnaryKind {
     Not,
     Neg,
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -34,6 +39,7 @@ pub enum Literal {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub struct BinaryExpr {
     pub kind: Spanned<BinaryKind>,
     pub lhs: Node<Expression>,
@@ -41,12 +47,14 @@ pub struct BinaryExpr {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub struct Call {
     pub callee: Node<Expression>,
     pub args: Vec<Spanned<Expression>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub enum Expression {
     Assignment {
         id: Spanned<Identifier>,
@@ -63,9 +71,11 @@ pub enum Expression {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub struct Statements(pub Vec<Spanned<Statement>>);
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub struct FunctionDeclaration {
     pub name: Spanned<String>,
     pub args: Vec<Spanned<String>>,
@@ -73,6 +83,7 @@ pub struct FunctionDeclaration {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[derive(Arbitrary)]
 pub enum Statement {
     Expr(Spanned<Expression>),
     Print(Spanned<Expression>),

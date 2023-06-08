@@ -1,9 +1,10 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use rlox::compiler::parse::ast;
 
-fuzz_target!(|data: &str| {
+fuzz_target!(|data: ast::Statements| {
     let mut stderr = vec![];
     let mut stdout = vec![];
-    rlox::vm::interpret(data, &mut stdout, &mut stderr);
+    let _ = rlox::vm::interpret(&data.to_string(), &mut stdout, &mut stderr);
 });

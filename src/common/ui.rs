@@ -1,8 +1,10 @@
 use std::{fmt::Display, ops::Index};
 
+use arbitrary::Arbitrary;
 use tracing::warn;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Arbitrary)]
 pub struct Span {
     begin: u32,
     end: u32,
@@ -67,6 +69,7 @@ impl ariadne::Span for Span {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Arbitrary)]
 pub struct Spanned<T> {
     pub data: T,
     pub span: Span,

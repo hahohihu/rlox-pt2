@@ -384,7 +384,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn block(&mut self) -> ParseResult<Spanned<Statements>> {
-        let lbrace = self.pop().unwrap();
+        let lbrace = self.pop()?;
         if lbrace.data != Token::LBrace {
             return Err(ParseError::ExpectError {
                 expected: "{",

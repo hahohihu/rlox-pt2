@@ -11,7 +11,7 @@ use vm::interpret;
 
 mod bytecode;
 mod common;
-mod compiler;
+pub mod compiler;
 mod value;
 pub mod vm;
 

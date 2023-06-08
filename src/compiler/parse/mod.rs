@@ -1,4 +1,4 @@
-mod ast;
+pub mod ast;
 mod expr;
 mod lex;
 mod parser;

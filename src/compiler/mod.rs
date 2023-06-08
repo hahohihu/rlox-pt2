@@ -2,7 +2,7 @@ use crate::bytecode::chunk::Chunk;
 use std::io::Write;
 
 mod codegen;
-mod parse;
+pub mod parse;
 
 pub use parse::parse;
 
