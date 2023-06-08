@@ -3,7 +3,7 @@ source: src/compiler/parse/parser.rs
 expression: "crate::common::test_util::mock_parse(\"\n        fun foo() {\n            return 1;\n        }\n        print foo() + foo();\n        \")"
 ---
 ast:
-fun foo(()) {
+fun foo() {
 return 1;
 }
 print (foo() + foo());

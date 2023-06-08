@@ -1,0 +1,14 @@
+---
+source: src/compiler/parse/parser.rs
+expression: "crate::common::test_util::mock_parse(\"\n        {\n            print u = nil()();\n        }\n        \")"
+---
+stderr:
+Error: 
+   ╭─[<unknown>:3:2]
+   │
+ 3 │             print u = nil()();
+   │                     ┬  
+   │                     ╰── Invalid assignment at this expression depth
+───╯
+
+

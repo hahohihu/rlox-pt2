@@ -46,7 +46,7 @@ impl Display for Literal {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Assignment { id, rhs } => write!(f, "{} = {}", id.data, rhs.data),
+            Expression::Assignment { id, rhs } => write!(f, "{} = {}", id.data.0, rhs.data),
             Expression::Binary(BinaryExpr { kind, lhs, rhs }) => {
                 write!(f, "({} {} {})", lhs.data, kind.data, rhs.data)
             }
@@ -56,7 +56,7 @@ impl Display for Expression {
             }
             Expression::Unary { kind, val } => write!(f, "({}{})", kind.data, val.data),
             Expression::Literal(lit) => lit.data.fmt(f),
-            Expression::Identifier(id) => id.data.fmt(f),
+            Expression::Identifier(id) => id.data.0.fmt(f),
         }
     }
 }
@@ -67,16 +67,16 @@ impl Display for Statement {
             Statement::Expr(expr) => write!(f, "{expr};")?,
             Statement::Print(expr) => write!(f, "print {expr};")?,
             Statement::VarDeclaration { id, rhs } => {
-                write!(f, "var {}", id.data)?;
+                write!(f, "var {}", id.data.0)?;
                 if let Some(rhs) = rhs {
                     write!(f, " = {}", rhs.data)?;
                 }
                 ";".fmt(f)?;
             }
             Statement::FunctionDeclaration(FunctionDeclaration { name, args, body }) => {
-                write!(f, "fun {}(", name.data)?;
+                write!(f, "fun {}", name.data.0)?;
                 fmt_list(args.iter(), f)?;
-                ") ".fmt(f)?;
+                " ".fmt(f)?;
                 write!(f, "{{\n{body}}}")?;
             }
             Statement::Block(body) => write!(f, "{{\n{body}}}")?,

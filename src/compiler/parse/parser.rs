@@ -14,6 +14,7 @@ use super::BinaryExpr;
 use super::BinaryKind;
 use super::Call;
 use super::Expression;
+use super::Identifier;
 use super::Literal;
 use super::Precedence;
 use super::Statement;
@@ -177,7 +178,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     ) -> ParseResult<Spanned<Expression>> {
         let name = &self.source[ident_span];
         let id = Spanned {
-            data: name.to_owned(),
+            data: Identifier::from(name.to_owned()),
             span: ident_span,
         };
         if let Some(eq) = self.matches(Token::Eq) {
@@ -445,7 +446,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         self.check_semicolon(var.span)?;
 
         let id = Spanned {
-            data: self.source[namespan].to_owned(),
+            data: Identifier::from(self.source[namespan].to_owned()),
             span: namespan,
         };
         Ok(Statement::VarDeclaration { id, rhs }.spanned())
@@ -473,18 +474,20 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         .spanned())
     }
 
-    fn parameter_list(&mut self) -> ParseResult<Vec<Spanned<String>>> {
+    fn parameter_list(&mut self) -> ParseResult<Vec<Spanned<Identifier>>> {
         let lparen_span = self.expect(Token::LParen, "(")?;
 
         let mut args = vec![];
         let ident = self.peek()?;
         if ident.data == Token::Ident {
             self.pop().unwrap();
-            args.push(String::from(&self.source[ident.span]).with_span(ident.span));
+            args.push(
+                Identifier::from(String::from(&self.source[ident.span])).with_span(ident.span),
+            );
             while self.peek()?.data == Token::Comma {
                 self.pop().unwrap();
                 let ident = self.expect(Token::Ident, "identifier")?;
-                args.push(String::from(&self.source[ident]).with_span(ident));
+                args.push(Identifier::from(String::from(&self.source[ident])).with_span(ident));
             }
         }
 
@@ -518,7 +521,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         let body = self.block()?;
 
         Ok(Statement::FunctionDeclaration(FunctionDeclaration {
-            name: String::from(&self.source[name]).with_span(name),
+            name: Identifier::from(String::from(&self.source[name])).with_span(name),
             args,
             body,
         })
@@ -596,6 +599,14 @@ mod tests {
     snap_parse!(parens, "print 2 * (6 + 1) / (2) -- 100;");
     snap_parse!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap_parse!(unary, "print -1 - -2 == --1 == true;");
+    snap_parse!{
+        call_nil,
+        "
+        {
+            print u = nil()();
+        }
+        "
+    }
 }
 
 #[cfg(test)]

@@ -1,10 +1,35 @@
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}};
 
 use arbitrary::Arbitrary;
 
 use crate::common::ui::{Span, Spanned};
 
-pub type Identifier = String;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Identifier(pub String);
+
+impl<'a> Arbitrary<'a> for Identifier {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let s: String = u.arbitrary()?;
+        if s.chars().next().is_some_and(|c| c.is_alphabetic()) && s.chars().all(|c| c.is_alphanumeric()) {
+            Ok(Identifier(s))
+        } else {
+            Err(arbitrary::Error::IncorrectFormat)
+        }
+    }
+}
+
+impl Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for Identifier {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
 pub type Node<T> = Box<Spanned<T>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -88,6 +113,7 @@ impl Display for FuzzStatements {
 impl Debug for FuzzStatements {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // just for fuzzing, to get a cleaner display
+        writeln!(f, "{:#?}\n", self.0)?;
         write!(f, "{}", self.0)
     }
 }
@@ -95,8 +121,8 @@ impl Debug for FuzzStatements {
 #[derive(Debug, PartialEq, Clone)]
 #[derive(Arbitrary)]
 pub struct FunctionDeclaration {
-    pub name: Spanned<String>,
-    pub args: Vec<Spanned<String>>,
+    pub name: Spanned<Identifier>,
+    pub args: Vec<Spanned<Identifier>>,
     pub body: Spanned<Statements>,
 }
 

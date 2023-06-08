@@ -366,13 +366,13 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             }
             Expression::Literal(lit) => self.literal(lit)?,
             Expression::Assignment { id, rhs } => {
-                let (scope, follow_byte) = self.resolve(&id.data);
+                let (scope, follow_byte) = self.resolve(&id.data.0);
                 let opcode = scope.set_opcode();
                 self.expression(&rhs.data)?;
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
             }
             Expression::Identifier(id) => {
-                let (scope, follow_byte) = self.resolve(&id.data);
+                let (scope, follow_byte) = self.resolve(&id.data.0);
                 let opcode = scope.get_opcode();
                 emit_bytes!(self.chunk, id.span; opcode, follow_byte);
             }
@@ -416,10 +416,10 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         let function_start = self.chunk.instructions.len();
 
         // mark self so recursive calls work
-        self.add_local(&name.data);
+        self.add_local(&name.data.0);
         // callee must initialize the args, this is just to make the offsets work
         for arg in args {
-            self.add_local(&arg.data);
+            self.add_local(&arg.data.0);
         }
 
         self.block(&body.data)?;
@@ -433,7 +433,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             arity: args.len().try_into().unwrap(),
             upvalues: callframe.upvalues.len() as u8,
             addr: function_start,
-            name: UnsafeString::from(name.data.as_str()),
+            name: UnsafeString::from(name.data.0.as_str()),
         };
 
         let constant = self.chunk.add_constant(function.into());
@@ -444,10 +444,10 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
         }
 
         if self.in_global_scope() {
-            let nameid = self.chunk.globals.add_or_get(&name.data);
+            let nameid = self.chunk.globals.add_or_get(&name.data.0);
             emit_bytes!(self.chunk, name.span; OpCode::DefineGlobal, nameid);
         } else {
-            self.add_local(&name.data);
+            self.add_local(&name.data.0);
         }
 
         Ok(())
@@ -470,10 +470,10 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
                     self.chunk.emit_constant(Value::Nil, id.span);
                 }
                 if self.in_global_scope() {
-                    let nameid = self.chunk.globals.add_or_get(&id.data);
+                    let nameid = self.chunk.globals.add_or_get(&id.data.0);
                     emit_bytes!(self.chunk, id.span; OpCode::DefineGlobal, nameid);
                 } else {
-                    self.add_local(&id.data);
+                    self.add_local(&id.data.0);
                 }
             }
             Statement::Block(statements) => self.scoped_block(&statements.data)?,

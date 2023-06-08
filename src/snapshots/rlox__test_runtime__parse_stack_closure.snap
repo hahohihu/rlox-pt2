@@ -3,9 +3,9 @@ source: src/main.rs
 expression: "crate::common::test_util::mock_parse(r#\"\n        fun outer() {\n            var x = \"outside\";\n            fun inner() {\n              print x;\n            }\n            inner();\n          }\n          outer();\n        \"#)"
 ---
 ast:
-fun outer(()) {
+fun outer() {
 var x = "outside";
-fun inner(()) {
+fun inner() {
 print x;
 }
 inner();
