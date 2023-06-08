@@ -56,10 +56,42 @@ pub enum UnaryKind {
     Neg,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct StringLiteral(pub String);
+
+impl Display for StringLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+
+impl<'a> Arbitrary<'a> for StringLiteral {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        struct NonquoteChar(char);
+        impl<'a> Arbitrary<'a> for NonquoteChar {
+            fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+                let c = u.arbitrary::<char>()?;
+                if c == '"' {
+                    return Err(arbitrary::Error::IncorrectFormat);
+                }
+                Ok(Self(c))
+            }
+        }
+        let iter = u.arbitrary_iter::<NonquoteChar>()?;
+        let mut s = String::new();
+        for c in iter {
+            let c = c?;
+            s.push(c.0);
+        }
+        Ok(Self(s))
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub enum Literal {
     Number(f64),
-    String(String),
+    String(StringLiteral),
     Boolean(bool),
     Nil,
 }

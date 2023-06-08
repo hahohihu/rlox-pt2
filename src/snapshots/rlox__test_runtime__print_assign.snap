@@ -1,12 +1,12 @@
 ---
 source: src/main.rs
-expression: "crate::common::util::mock_interpret(\"\n        var s;\n        print s = \\\"s\\\";\n        \")"
+expression: "crate::common::test_util::mock_interpret(\"\n        var s;\n        print s = \\\"s\\\";\n        \")"
 ---
 stdout:
 
 
 stderr:
-Error: 
+Error: Parse error
    ╭─[<unknown>:2:12]
    │
  3 │         print s = "s";

@@ -291,7 +291,7 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
             }
             Literal::String(s) => {
                 self.chunk
-                    .emit_constant(Value::from(s.as_str()), literal.span);
+                    .emit_constant(Value::from(s.0.as_str()), literal.span);
             }
             Literal::Boolean(b) => {
                 if *b {
@@ -486,19 +486,20 @@ impl<'src, StdErr: Write> Compiler<'src, StdErr> {
                 let if_false_jump = self.chunk.emit_jump(OpCode::JumpRelIfFalse, cond.span);
                 self.chunk.emit_impl_byte(OpCode::Pop);
                 self.scoped_block(&then_branch.data)?;
-                let end_jump = if let Some(else_branch) = else_branch {
+                if let Some(else_branch) = else_branch {
                     // skip else after if
                     let end_else_jump = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
                     self.patch_jump(if_false_jump, Chunk::impl_span())?;
                     // pop the condition
                     self.chunk.emit_impl_byte(OpCode::Pop);
                     self.scoped_block(&else_branch.data)?;
-                    end_else_jump
+                    self.patch_jump(end_else_jump, Chunk::impl_span())?;
                 } else {
-                    if_false_jump
-                };
-
-                self.patch_jump(end_jump, Chunk::impl_span())?;
+                    let jump_over_pop = self.chunk.emit_jump(OpCode::JumpRel, Chunk::impl_span());
+                    self.patch_jump(if_false_jump, Chunk::impl_span())?;
+                    self.chunk.emit_impl_byte(OpCode::Pop);
+                    self.patch_jump(jump_over_pop, Chunk::impl_span())?;
+                }
             }
             Statement::While { cond, body } => {
                 let start = self.chunk.instructions.len();

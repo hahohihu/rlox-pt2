@@ -45,6 +45,6 @@ impl From<f64> for Literal {
 
 impl From<String> for Literal {
     fn from(value: String) -> Self {
-        Self::String(value)
+        Self::String(StringLiteral(value))
     }
 }

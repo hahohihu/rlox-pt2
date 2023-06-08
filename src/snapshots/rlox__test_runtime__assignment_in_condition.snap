@@ -1,12 +1,12 @@
 ---
 source: src/main.rs
-expression: "crate::common::util::mock_interpret(\"\n        var a = true;\n        if a = false {\n            print 1;\n        } else {\n            print 2;\n        }\n        \")"
+expression: "crate::common::test_util::mock_interpret(\"\n        var a = true;\n        if a = false {\n            print 1;\n        } else {\n            print 2;\n        }\n        \")"
 ---
 stdout:
 
 
 stderr:
-Error: 
+Error: Parse error
    ╭─[<unknown>:2:12]
    │
  3 │         if a = false {
