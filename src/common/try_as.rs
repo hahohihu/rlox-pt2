@@ -2,7 +2,7 @@
 pub trait TryAs<To>: Sized {
     fn try_as(self) -> Option<To>;
 
-    unsafe fn unwrap_as(self) -> To {
+    fn unwrap_as(self) -> To {
         self.try_as().unwrap()
     }
 }
@@ -15,7 +15,7 @@ impl<T> TryAs<T> for T {
 
 pub trait TryCast<From>: Sized {
     fn try_cast(value: From) -> Option<Self>;
-    unsafe fn unwrap_cast(value: From) -> Self {
+    fn unwrap_cast(value: From) -> Self {
         Self::try_cast(value).unwrap()
     }
 }
