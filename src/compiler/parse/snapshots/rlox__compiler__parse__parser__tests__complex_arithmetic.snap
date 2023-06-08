@@ -3,7 +3,7 @@ source: src/compiler/parse/parser.rs
 expression: "crate::common::test_util::mock_parse(\"print 20 * 5 / 0.5 - 100.0;\")"
 ---
 ast:
-((print (- (/ (* 20 5) 0.5) 100))
-)
+print (((20 * 5) / 0.5) - 100);
+
 
 

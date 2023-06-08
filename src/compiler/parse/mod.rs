@@ -2,7 +2,7 @@ mod ast;
 mod expr;
 mod lex;
 mod parser;
-mod sexpr;
+mod display;
 mod stmt;
 mod token_conversion;
 pub use ast::*;

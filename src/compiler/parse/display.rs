@@ -46,16 +46,15 @@ impl Display for Literal {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Assignment { id, rhs } => write!(f, "(set {} {})", id.data, rhs.data),
+            Expression::Assignment { id, rhs } => write!(f, "{} = {}", id.data, rhs.data),
             Expression::Binary(BinaryExpr { kind, lhs, rhs }) => {
-                write!(f, "({} {} {})", kind.data, lhs.data, rhs.data)
+                write!(f, "({} {} {})", lhs.data, kind.data, rhs.data)
             }
             Expression::Call(Call { callee, args }) => {
-                write!(f, "({} ", callee)?;
-                fmt_list(args.iter(), f)?;
-                ")".fmt(f)
+                write!(f, "{}", callee)?;
+                fmt_list(args.iter(), f)
             }
-            Expression::Unary { kind, val } => write!(f, "({} {})", kind.data, val.data),
+            Expression::Unary { kind, val } => write!(f, "({}{})", kind.data, val.data),
             Expression::Literal(lit) => lit.data.fmt(f),
             Expression::Identifier(id) => id.data.fmt(f),
         }
@@ -65,42 +64,41 @@ impl Display for Expression {
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::Expr(expr) => expr.data.fmt(f)?,
-            Statement::Print(expr) => write!(f, "(print {expr})")?,
+            Statement::Expr(expr) => write!(f, "{expr};")?,
+            Statement::Print(expr) => write!(f, "print {expr};")?,
             Statement::VarDeclaration { id, rhs } => {
-                write!(f, "(var {}", id.data)?;
+                write!(f, "var {}", id.data)?;
                 if let Some(rhs) = rhs {
-                    write!(f, " {}", rhs.data)?;
+                    write!(f, " = {}", rhs.data)?;
                 }
-                ")".fmt(f)?;
+                ";".fmt(f)?;
             }
             Statement::FunctionDeclaration(FunctionDeclaration { name, args, body }) => {
-                write!(f, "(defun {}", name.data)?;
+                write!(f, "fun {}(", name.data)?;
                 fmt_list(args.iter(), f)?;
-                body.data.fmt(f)?;
-                ")".fmt(f)?;
+                ") ".fmt(f)?;
+                write!(f, "{{\n{body}}}")?;
             }
-            Statement::Block(body) => body.data.fmt(f)?,
+            Statement::Block(body) => write!(f, "{{\n{body}}}")?,
             Statement::IfElse {
                 cond,
                 then_branch,
                 else_branch,
             } => {
-                write!(f, "(if {} {}", cond.data, then_branch)?;
+                write!(f, "if {} {{\n{}}}", cond.data, then_branch)?;
                 if let Some(branch) = else_branch {
-                    branch.fmt(f)?;
+                    write!(f, " else {{\n{branch}}}")?;
                 }
-                ")".fmt(f)?;
             }
             Statement::While { cond, body } => {
-                write!(f, "(while {} {})", cond.data, body)?;
+                write!(f, "while {} {{\n{}}}", cond.data, body)?;
             }
             Statement::Return { span: _, value } => {
-                write!(f, "(return")?;
+                write!(f, "return")?;
                 if let Some(value) = value {
                     write!(f, " {}", value.data)?;
                 }
-                ")".fmt(f)?;
+                ";".fmt(f)?;
             }
         }
         "\n".fmt(f)
@@ -115,7 +113,7 @@ fn fmt_list<T: Display>(
     if let Some(stmt) = it.next() {
         stmt.fmt(f)?;
         for stmt in it {
-            write!(f, " {stmt}")?;
+            write!(f, ", {stmt}")?;
         }
     }
     ")".fmt(f)
@@ -123,6 +121,9 @@ fn fmt_list<T: Display>(
 
 impl Display for Statements {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt_list(self.0.iter(), f)
+        for stmt in self.0.iter() {
+            write!(f, "{stmt}")?;
+        }
+        Ok(())
     }
 }

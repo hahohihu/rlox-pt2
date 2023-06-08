@@ -3,7 +3,7 @@ source: src/compiler/parse/parser.rs
 expression: "crate::common::test_util::mock_parse(\"print -1 - -2 == --1 == true;\")"
 ---
 ast:
-((print (== (== (- (- 1) (- 2)) (- (- 1))) true))
-)
+print ((((-1) - (-2)) == (-(-1))) == true);
+
 
 
