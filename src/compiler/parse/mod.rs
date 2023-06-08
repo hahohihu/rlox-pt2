@@ -1,7 +1,7 @@
 pub mod ast;
 mod expr;
 mod lex;
-mod parser;
+pub mod parser;
 mod display;
 mod stmt;
 mod token_conversion;

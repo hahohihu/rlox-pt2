@@ -5,6 +5,10 @@ use crate::compiler::parse::FunctionDeclaration;
 #[cfg(not(feature = "verbose_parsing"))]
 use crate::noop as trace;
 
+use ariadne::Color;
+use ariadne::Label;
+use ariadne::Report;
+use ariadne::ReportKind;
 #[cfg(feature = "verbose_parsing")]
 use tracing::trace;
 
@@ -34,12 +38,20 @@ struct Parser<'src, StdErr: Write> {
 pub enum ParseError {
     InvalidToken(Span),
     ExpectError { expected: &'static str, got: Span },
+    AssignmentDepth { at: Span },
     Handled,
+}
+
+fn simple_parse_error(span: Span, msg: String) -> Report<'static, Span> {
+    Report::build(ReportKind::Error, (), ui::OFFSET)
+        .with_message("Parse error")
+        .with_label(Label::new(span).with_color(Color::Red).with_message(msg))
+        .finish()
 }
 
 impl ParseError {
     pub fn print(&self, stderr: impl Write, source: &str) {
-        use ariadne::{Color, Label, Report, ReportKind, Source};
+        use ariadne::{Source};
         let report = match self {
             Self::InvalidToken(span) => Report::build(ReportKind::Error, (), ui::OFFSET)
                 .with_message("Lexing error")
@@ -47,17 +59,16 @@ impl ParseError {
                     Label::new(*span)
                         .with_color(Color::Red)
                         .with_message("Invalid token"),
-                ),
-            Self::ExpectError { expected, got } => Report::build(ReportKind::Error, (), ui::OFFSET)
-                .with_message("Parse error")
-                .with_label(
-                    Label::new(*got)
-                        .with_color(Color::Green)
-                        .with_message(format!("Expected {expected}")),
-                ),
+                ).finish(),
+            Self::AssignmentDepth { at } => {
+                simple_parse_error(*at, "Invalid assignment at this expression depth".to_string())
+            }
+            Self::ExpectError { expected, got } => {
+                simple_parse_error(*got, format!("Expected {expected}"))
+            }
             Self::Handled => return,
         };
-        report.finish().write(Source::from(source), stderr).unwrap();
+        report.write(Source::from(source), stderr).unwrap();
     }
 }
 
@@ -183,8 +194,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
         };
         if let Some(eq) = self.matches(Token::Eq) {
             if !can_assign {
-                self.simple_error(eq.span, "Invalid assignment at this expression depth");
-                return Err(ParseError::Handled);
+                return Err(ParseError::AssignmentDepth { at: eq.span });
             }
             let rhs = self.expression(can_assign)?;
             Ok(Expression::Assignment {
@@ -569,10 +579,13 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 }
 
+pub fn parse_res(source: &str, stderr: impl Write) -> ParseResult<Statements> {
+    let parser = Parser::new(source, stderr);
+    parser.top()
+}
+
 pub fn parse(source: &str, mut stderr: impl Write) -> Option<Statements> {
-    let parser = Parser::new(source, &mut stderr);
-    let res = parser.top();
-    match res {
+    match parse_res(source, &mut stderr) {
         Ok(ast) => Some(ast),
         Err(e) => {
             e.print(stderr, source);
@@ -599,7 +612,7 @@ mod tests {
     snap_parse!(parens, "print 2 * (6 + 1) / (2) -- 100;");
     snap_parse!(nested_parens, "print ((1) / (1 + (1 / 0.5)) * 3);");
     snap_parse!(unary, "print -1 - -2 == --1 == true;");
-    snap_parse!{
+    snap_parse! {
         call_nil,
         "
         {

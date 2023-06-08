@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}};
+use std::fmt::{Debug, Display};
 
 use arbitrary::Arbitrary;
 
@@ -10,7 +10,9 @@ pub struct Identifier(pub String);
 impl<'a> Arbitrary<'a> for Identifier {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         let s: String = u.arbitrary()?;
-        if s.chars().next().is_some_and(|c| c.is_alphabetic()) && s.chars().all(|c| c.is_alphanumeric()) {
+        if s.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+            && s.chars().all(|c| c.is_ascii_alphanumeric())
+        {
             Ok(Identifier(s))
         } else {
             Err(arbitrary::Error::IncorrectFormat)
@@ -32,8 +34,7 @@ impl From<String> for Identifier {
 
 pub type Node<T> = Box<Spanned<T>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[derive(Arbitrary)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Arbitrary)]
 pub enum BinaryKind {
     Equals,
     NotEquals,
@@ -49,15 +50,13 @@ pub enum BinaryKind {
     Or,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[derive(Arbitrary)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Arbitrary)]
 pub enum UnaryKind {
     Not,
     Neg,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -65,23 +64,20 @@ pub enum Literal {
     Nil,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub struct BinaryExpr {
     pub kind: Spanned<BinaryKind>,
     pub lhs: Node<Expression>,
     pub rhs: Node<Expression>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub struct Call {
     pub callee: Node<Expression>,
     pub args: Vec<Spanned<Expression>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub enum Expression {
     Assignment {
         id: Spanned<Identifier>,
@@ -97,8 +93,7 @@ pub enum Expression {
     Call(Call),
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub struct Statements(pub Vec<Spanned<Statement>>);
 
 #[derive(Arbitrary, Clone)]
@@ -118,16 +113,14 @@ impl Debug for FuzzStatements {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub struct FunctionDeclaration {
     pub name: Spanned<Identifier>,
     pub args: Vec<Spanned<Identifier>>,
     pub body: Spanned<Statements>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(Arbitrary)]
+#[derive(Debug, PartialEq, Clone, Arbitrary)]
 pub enum Statement {
     Expr(Spanned<Expression>),
     Print(Spanned<Expression>),

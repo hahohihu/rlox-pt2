@@ -2,9 +2,13 @@
 
 use libfuzzer_sys::fuzz_target;
 use rlox::compiler::parse::ast;
-use rlox::compiler::parse::parse;
+use rlox::compiler::parse::parser::{parse_res, ParseError};
 
 fuzz_target!(|data: ast::FuzzStatements| {
     let mut stderr = vec![];
-    parse(&data.to_string(), &mut stderr).unwrap();
+    match parse_res(&data.to_string(), &mut stderr) {
+        Ok(_) => {},
+        Err(ParseError::AssignmentDepth { .. }) => {},
+        Err(e) => panic!("{e:?}"),
+    }
 });
