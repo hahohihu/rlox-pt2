@@ -687,7 +687,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
                     let a = self.pop();
                     self.push(Value::Bool(a == b));
                 }
-                _ => {
+                OpCode::Invalid => {
                     // Invalid is only reachable at a specific value (30), but any other values would be UB anyways because of the transmute
                     unreachable_unchecked();
                 }
