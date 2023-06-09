@@ -65,7 +65,6 @@ impl Display for StringLiteral {
     }
 }
 
-
 impl<'a> Arbitrary<'a> for StringLiteral {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         struct NonquoteChar(char);

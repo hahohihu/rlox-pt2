@@ -51,7 +51,7 @@ fn simple_parse_error(span: Span, msg: String) -> Report<'static, Span> {
 
 impl ParseError {
     pub fn print(&self, stderr: impl Write, source: &str) {
-        use ariadne::{Source};
+        use ariadne::Source;
         let report = match self {
             Self::InvalidToken(span) => Report::build(ReportKind::Error, (), ui::OFFSET)
                 .with_message("Lexing error")
@@ -59,10 +59,12 @@ impl ParseError {
                     Label::new(*span)
                         .with_color(Color::Red)
                         .with_message("Invalid token"),
-                ).finish(),
-            Self::AssignmentDepth { at } => {
-                simple_parse_error(*at, "Invalid assignment at this expression depth".to_string())
-            }
+                )
+                .finish(),
+            Self::AssignmentDepth { at } => simple_parse_error(
+                *at,
+                "Invalid assignment at this expression depth".to_string(),
+            ),
             Self::ExpectError { expected, got } => {
                 simple_parse_error(*got, format!("Expected {expected}"))
             }
@@ -573,9 +575,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn declaration(&mut self) -> ParseResult<Spanned<Statement>> {
-        stacker::maybe_grow(32 * 1024, 1024 * 1024, || {
-            self._declaration()
-        })
+        stacker::maybe_grow(32 * 1024, 1024 * 1024, || self._declaration())
     }
 
     fn top(mut self) -> ParseResult<Statements> {
@@ -702,7 +702,7 @@ mod errors {
         if (true) print 1;
         "
     }
-    
+
     snap_parse! {
         lots_of_lparens, // this is to test that the stack doesn't overflow
         "

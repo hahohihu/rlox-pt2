@@ -1,8 +1,8 @@
 pub mod ast;
+mod display;
 mod expr;
 mod lex;
 pub mod parser;
-mod display;
 mod stmt;
 mod token_conversion;
 pub use ast::*;
