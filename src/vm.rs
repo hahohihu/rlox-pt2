@@ -278,23 +278,23 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
     fn show_debug_trace(&self) {
         self.chunk
             .disassemble_instruction(self.ip_offset(), self.source, std::io::stdout());
-        println!("==== STACK ====");
+        eprintln!("==== STACK ====");
         for value in unsafe { self.stack.slice() } {
-            println!("{value}");
+            eprintln!("{value}");
         }
-        println!("==== OPEN UPVALUES ====");
+        eprintln!("==== OPEN UPVALUES ====");
         let mut it = self.open_upvalues;
         while let Some(upvalue) = it {
-            println!("{} @ {:?}", *upvalue.value, upvalue.value.as_ptr());
+            eprintln!("{} @ {:?}", *upvalue.value, upvalue.value.as_ptr());
             it = upvalue.next_open;
         }
-        println!("==== GLOBALS ====");
+        eprintln!("==== GLOBALS ====");
         for (i, v) in self.globals.iter().enumerate() {
             if let Some(v) = v {
-                println!("{} = {}", self.chunk.globals.get_name(i as u8), v);
+                eprintln!("{} = {}", self.chunk.globals.get_name(i as u8), v);
             }
         }
-        println!("=================");
+        eprintln!("=================");
     }
 
     unsafe fn peek(&self, i: usize) -> Value {
@@ -423,13 +423,6 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
         //   b: stacked borrows make &mut awkward to deal with
         let value = unsafe { ValidPtr::from_ptr(self.stack.get_ptr(self.stack.len() - 1)) };
         while let Some(upvalue) = self.open_upvalues {
-            println!(
-                "{} @ {:?} < {} @ {:?}",
-                *upvalue.value,
-                upvalue.value.as_ptr(),
-                *value,
-                value.as_ptr()
-            );
             if upvalue.value.as_ptr() < value.as_ptr() {
                 break;
             }
