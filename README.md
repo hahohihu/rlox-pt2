@@ -2,7 +2,7 @@ This is an implementation of clox that stuck a bit too close to the [book](https
 
 # Safety and Optimization
 
-I intended to mostly stick to safe Rust early on (except for GC-managed pointers), but benchmarks showed my implementation performing similarly to jlox. That was mostly because of bounds checks, conditions, etc. in tight loops that presumably inhibited compiler optimization (the branch prediction alone wouldn't account for a 3x difference). 
+I intended to mostly stick to safe Rust early on (except for GC-managed pointers), but benchmarks showed my implementation performing similarly to jlox. That was mostly because of bounds checks, conditions, etc. in tight loops that presumably inhibited compiler optimization (I don't think the branch alone would account for a 3x difference with branch prediction). 
 
 The clox VM is deeply unsafe, but is sound given the way codegen happens. For example, pushing and popping off the stack were bottlenecks due to bounds checking, but both never actually need to be bounds checked - even with a fixed array. Popping isn't a huge surprise, since the codegen will only pop at the end of a scope, statement, etc. Pushing works out because there is are upper limits on _everything_. There can only be `u8::MAX` variables, and there's a maximum recursion limit. So we can elide bounds checks entirely - that alone got me 1/2 the way to clox.
 
