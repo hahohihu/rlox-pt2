@@ -401,12 +401,7 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             }
         }
 
-        let new_upvalue = ValidPtr::new(Upvalue {
-            value,
-            closed: Value::Num(f64::MAX),
-            marked: false,
-            next_open: current,
-        });
+        let new_upvalue = ValidPtr::new(Upvalue::new(value, current));
         if let Some(prev) = prev {
             unsafe {
                 (*prev.as_ptr()).next_open = Some(new_upvalue);
@@ -426,10 +421,8 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             if upvalue.value.as_ptr() < value.as_ptr() {
                 break;
             }
-            unsafe {
-                (*upvalue.as_ptr()).closed = *value;
-                (*upvalue.as_ptr()).value = ValidPtr::from_ptr(&mut (*upvalue.as_ptr()).closed);
-            }
+            debug_assert!(upvalue.value.as_ptr() == value.as_ptr());
+            Upvalue::close(upvalue);
             self.upvalue_storage.push(upvalue);
             self.open_upvalues = upvalue.next_open;
         }

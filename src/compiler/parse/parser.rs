@@ -711,7 +711,9 @@ mod errors {
         if (true) print 1;
         "
     }
-
+    
+    // miri can't use stacker
+    #[cfg(not(miri))]
     snap_parse! {
         lots_of_lparens, // this is to test that the stack doesn't overflow
         "

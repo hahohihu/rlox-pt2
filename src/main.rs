@@ -1042,6 +1042,8 @@ mod test_runtime {
 
     snap_interpret!(empty, "");
 
+    // This takes way too long with miri
+    #[cfg(not(miri))]
     snap_interpret! {
         gc_test_everything,
         r#"
