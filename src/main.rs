@@ -1041,4 +1041,34 @@ mod test_runtime {
     }
 
     snap_interpret!(empty, "");
+
+    snap_interpret! {
+        gc_test_everything,
+        r#"
+        fun glob(a) {
+            print "glob";
+            print a;
+        }
+        {
+            var i = 0;
+            var f = glob;
+            while i < 10000 {
+                print i;
+                print f("loop"); // outloop
+                var s = "foobar";
+                fun outer(out) {
+                    fun inner(in) {
+                        print i;
+                        print s; // foobar
+                        return out + in;
+                    }
+                    print inner("inner");
+                    return inner;
+                }
+                i = i + 1;
+                f = outer("out"); //outinner
+            }
+        }
+        "#
+    }
 }
