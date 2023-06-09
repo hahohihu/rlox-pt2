@@ -26,6 +26,10 @@ impl FixedStack {
         self.len.get()
     }
 
+    pub fn clear(&self) {
+        self.len.set(0);
+    }
+
     #[inline(always)]
     pub unsafe fn push(&self, value: Value) {
         let len = self.len.get();

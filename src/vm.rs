@@ -36,7 +36,7 @@ struct CallFrame {
     closure: ObjClosure,
 }
 
-struct VM<'src, Stderr, Stdout> {
+struct VM<'src, Stderr: Write, Stdout: Write> {
     chunk: Chunk,
     ip: usize,
     callframe: Vec<CallFrame>,
@@ -54,22 +54,15 @@ struct VM<'src, Stderr, Stdout> {
     next_gc: usize,
 }
 
-impl<'src, Stderr, Stdout> Drop for VM<'src, Stderr, Stdout> {
+impl<'src, Stderr: Write, Stdout: Write> Drop for VM<'src, Stderr, Stdout> {
     fn drop(&mut self) {
         debug_assert!(self.open_upvalues.is_none());
-        for object in &self.objects {
-            unsafe {
-                // SAFETY: See safety invariant on objects
-                object.free();
-            }
-        }
-
-        for upvalue in &self.upvalue_storage {
-            unsafe {
-                // no internals to free
-                ValidPtr::free(*upvalue);
-            }
-        }
+        debug_assert!(self.callframe.is_empty());
+        // This is inefficient, but partly helps debugging memory leaks
+        self.globals.clear();
+        self.stack.clear();
+        self.mark_everything();
+        self.sweep();
     }
 }
 
@@ -554,7 +547,10 @@ impl<'src, Stderr: Write, Stdout: Write> VM<'src, Stderr, Stdout> {
             #[cfg(fuzzing)]
             {
                 iterations += 1;
-                if iterations == 10_000_000 {
+                // overly repetitive cases aren't super interesting
+                // very likely to just be simple loops, e.g. while true {}
+                // and a bigger number makes fuzzing take much longer than necessary
+                if iterations == 80_000 {
                     return Ok(());
                 }
             }
