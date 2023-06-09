@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(\"\n        fun foo(n) { print n; }\n        foo(1, 2);\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Function foo expects 1 arguments, but got 2
+   ╭─[<unknown>:2:12]
+   │
+ 3 │         foo(1, 2);
+   │         ───  
+   │               
+───╯
+
+

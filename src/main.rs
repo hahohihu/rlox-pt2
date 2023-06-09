@@ -1071,4 +1071,49 @@ mod test_runtime {
         }
         "#
     }
+
+    snap_interpret! {
+        bad_call_str,
+        r#"
+        "foo"();
+        "#
+    }
+
+    snap_interpret! {
+        bad_call_nil,
+        r#"
+        nil();
+        "#
+    }
+
+    snap_interpret! {
+        bad_call_num,
+        r#"
+        1();
+        "#
+    }
+
+    snap_interpret! {
+        bad_call_var,
+        r#"
+        var f = "foo";
+        f();
+        "#
+    }
+
+    snap_interpret! {
+        wrong_num_args,
+        "
+        fun foo(n) { print n; }
+        foo(1, 2);
+        "
+    }
+
+    snap_interpret! {
+        stack_overflow,
+        "
+        fun rec() { rec(); }
+        rec();
+        "
+    }
 }

@@ -56,8 +56,9 @@ struct VM<'src, Stderr: Write, Stdout: Write> {
 
 impl<'src, Stderr: Write, Stdout: Write> Drop for VM<'src, Stderr, Stdout> {
     fn drop(&mut self) {
-        debug_assert!(self.open_upvalues.is_none());
-        debug_assert!(self.callframe.is_empty());
+        // these are rare, but may happen if the stack overflows
+        self.callframe.clear();
+        self.open_upvalues = None;
         // This is inefficient, but partly helps debugging memory leaks
         self.globals.clear();
         self.stack.clear();

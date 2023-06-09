@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(r#\"\n        \"foo\"();\n        \"#)"
+---
+stdout:
+
+
+stderr:
+Error: Canot call a value of type string
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         "foo"();
+   │         ─────  
+   │                 
+───╯
+
+

@@ -1,0 +1,17 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(\"\n        fun rec() { rec(); }\n        rec();\n        \")"
+---
+stdout:
+
+
+stderr:
+Error: Overflowed the stack calling rec
+   ╭─[<unknown>:2:12]
+   │
+ 2 │         fun rec() { rec(); }
+   │                     ───  
+   │                           
+───╯
+
+
