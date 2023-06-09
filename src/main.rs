@@ -1116,4 +1116,23 @@ mod test_runtime {
         rec();
         "
     }
+
+    snap_interpret!{
+        escape_mutate,
+        "
+        {
+            var a = 0;
+            var f;
+            {
+                fun inner() {
+                    a = 1;
+                }
+                f = inner;
+            }
+            print a;
+            f();
+            print a;
+        }
+        "
+    }
 }

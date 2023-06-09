@@ -1,0 +1,12 @@
+---
+source: src/main.rs
+expression: "crate::common::test_util::mock_interpret(\"\n        {\n            var a = 0;\n            var f;\n            {\n                fun inner() {\n                    a = 1;\n                }\n                f = inner;\n            }\n            print a;\n            f();\n            print a;\n        }\n        \")"
+---
+stdout:
+0
+1
+
+
+stderr:
+
+

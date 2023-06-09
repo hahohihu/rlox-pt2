@@ -74,6 +74,17 @@ impl ParseError {
     }
 }
 
+fn stack_safe<O>(f: impl FnOnce() -> O) -> O {
+    #[cfg(not(miri))]
+    {
+        stacker::maybe_grow(32 * 1024, 1024 * 1024, f)
+    }
+    #[cfg(miri)]
+    {
+        f()
+    }
+}
+
 pub type ParseResult<T> = Result<T, ParseError>;
 
 impl<'src, StdErr: Write> Parser<'src, StdErr> {
@@ -393,9 +404,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn expression(&mut self, can_assign: bool) -> ParseResult<Spanned<Expression>> {
-        stacker::maybe_grow(32 * 1024, 1024 * 1024, || {
-            self.expression_bp(Precedence::Start, can_assign)
-        })
+        stack_safe(|| self.expression_bp(Precedence::Start, can_assign))
     }
 
     fn block(&mut self) -> ParseResult<Spanned<Statements>> {
@@ -575,7 +584,7 @@ impl<'src, StdErr: Write> Parser<'src, StdErr> {
     }
 
     fn declaration(&mut self) -> ParseResult<Spanned<Statement>> {
-        stacker::maybe_grow(32 * 1024, 1024 * 1024, || self._declaration())
+        stack_safe(|| self._declaration())
     }
 
     fn top(mut self) -> ParseResult<Statements> {

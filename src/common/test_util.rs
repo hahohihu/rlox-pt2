@@ -16,9 +16,9 @@ macro_rules! black_box {
     };
 }
 
-#[cfg(feature = "snap")]
+#[cfg(not(miri))]
 pub use ::insta::assert_snapshot;
-#[cfg(not(feature = "snap"))]
+#[cfg(miri)]
 pub use black_box as assert_snapshot;
 
 pub fn mock_interpret(source: &str) -> String {
