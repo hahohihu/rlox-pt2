@@ -1,4 +1,4 @@
-This is an implementation of clox that stuck a bit too close to the [book](https://craftinginterpreters.com).
+This is an implementation of clox that sticks pretty close to the [book](https://craftinginterpreters.com).
 
 # Safety and Optimization
 
